@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
+    "vercel-build": "esbuild scripts/bundle-entry.ts --bundle --platform=node --target=node26 --format=esm --outfile=api/index.mjs --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
     "dev": "npx tsx --dns-result-order=ipv4first src/index.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
@@ -33,6 +34,7 @@
     "@types/node": "^26.1.2",
     "@types/nodemailer": "^8.0.1",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.25.10",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }

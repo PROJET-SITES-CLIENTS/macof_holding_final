@@ -5,3 +5,5 @@ drizzle/
 *.js.map
 *.d.ts
 !drizzle.config.ts
+.vercel
+.env*
