@@ -79,8 +79,12 @@ app.notFound((c) => {
 export default app;
 
 // ─── Local Dev Server ──────────────────────────────────────────────────────
+// En serverless (Vercel), la plateforme gère elle-même le runtime : on ne
+// démarre un serveur HTTP que hors Vercel (dev local, Render, Docker…).
 
-const port = Number(process.env.PORT) || 3001;
-console.log(`\n🚀 MACOF API Server → http://localhost:${port}\n`);
+if (!process.env.VERCEL) {
+  const port = Number(process.env.PORT) || 3001;
+  console.log(`\n🚀 MACOF API Server → http://localhost:${port}\n`);
 
-serve({ fetch: app.fetch, port });
+  serve({ fetch: app.fetch, port });
+}
