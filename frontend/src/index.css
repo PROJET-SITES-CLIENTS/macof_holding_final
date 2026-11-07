@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Thème Corporate Bold - Color Blocking */
+    /* Background par défaut : Deep Navy Blue (partie des 50% de bleu) */
+    --background: 215 50% 10%; /* #0c182b */
+    --foreground: 0 0% 100%; /* Blanc pour le texte sur fond sombre */
+
+    /* Card background : Corporate Blue */
+    --card: 215 60% 20%; /* #142f56 */
+    --card-foreground: 0 0% 100%;
+
+    --popover: 215 50% 10%;
+    --popover-foreground: 0 0% 100%;
+
+    /* BLEU CORPORATE MACOF (Luxueux) */
+    --primary: 215 90% 40%; /* Un bleu vif */
+    --primary-foreground: 0 0% 100%;
+
+    /* ROUGE CORPORATE MACOF (30% du design) */
+    --secondary: 350 80% 40%; /* Rouge profond #b8142b */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 215 30% 20%; 
+    --muted-foreground: 215 20% 75%; /* Gris-bleu clair */
+
+    --accent: 350 80% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 20% 90%; /* #E2E8F0 */
+    --input: 210 20% 90%;
+    --ring: 215 90% 40%;
+
+    --radius: 0rem; /* Pas d'arrondis pour un style architectural pointu */
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-white;
+    overflow-x: hidden;
+  }
+}
+
+/* Animations globales et Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
+.page-enter {
+  opacity: 0;
+}
+.page-enter-active {
+  opacity: 1;
+  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Utilitaires pour le texte et les dégradés */
+.text-gradient-corporate {
+  background: linear-gradient(to right, #1E3A8A, #3B82F6, #1E3A8A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-red {
+  background: linear-gradient(to right, #991B1B, #EF4444, #991B1B);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
