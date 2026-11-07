@@ -13,6 +13,10 @@ const ALLOWED_ORIGINS: string[] = [
   "https://macof-holding-frontend-git-main-travaileinsof-1730s-projects.vercel.app",
 ];
 
+// Toute URL de prévisualisation/production Vercel du frontend, quel que soit
+// le compte ou le suffixe (macof-holding-frontend, -abc123, -git-main-…)
+const FRONTEND_VERCEL_PATTERN = /^https:\/\/macof-holding-frontend(-[\w-]+)?\.vercel\.app$/;
+
 export const corsMiddleware = () => {
   return cors({
     origin: (origin: string | undefined, c: Context) => {
@@ -22,7 +26,7 @@ export const corsMiddleware = () => {
         return origin;
       }
 
-      if (ALLOWED_ORIGINS.includes(origin)) {
+      if (ALLOWED_ORIGINS.includes(origin) || FRONTEND_VERCEL_PATTERN.test(origin)) {
         return origin;
       }
 
