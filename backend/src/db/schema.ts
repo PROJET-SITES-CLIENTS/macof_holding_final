@@ -343,6 +343,43 @@ export const settings = pgTable("settings", {
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+// ─── Notifications push (PWA) ────────────────────────────────────────────────
+
+// Abonnements push des visiteurs ayant installe l'application PWA.
+export const push_subscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    user_agent: text("user_agent"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (self) => [index("idx_push_subscriptions_created").on(self.created_at)],
+);
+
+// Campagnes publicitaires envoyees via notifications push.
+export const notification_campaigns = pgTable(
+  "notification_campaigns",
+  {
+    id: serial("id").primaryKey(),
+    titre: varchar("titre", { length: 200 }).notNull(),
+    message: varchar("message", { length: 500 }).notNull(),
+    // Affiche / GIF / video heberges (Vercel Blob)
+    media_url: text("media_url"),
+    media_type: varchar("media_type", { length: 20 }), // image | video
+    cta_label: varchar("cta_label", { length: 100 }),
+    cta_url: text("cta_url"),
+    statut: varchar("statut", { length: 20 }).default("envoyee").notNull(), // envoyee
+    sent_count: integer("sent_count").default(0).notNull(),
+    failed_count: integer("failed_count").default(0).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    sent_at: timestamp("sent_at", { withTimezone: true }),
+  },
+  (self) => [index("idx_notification_campaigns_created").on(self.created_at)],
+);
+
 // ─── Drizzle ORM Relations ───────────a───────────────────────────────────────
 
 export const filialesRelations = relations(filiales, ({ many }) => ({

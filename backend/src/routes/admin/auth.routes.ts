@@ -154,6 +154,18 @@ adminFiliales.get("/", async (c) => {
   return success(c, list);
 });
 
+// Convertit le champ "details" (lignes separees par \n) en details_json ({ items: [...] })
+function parseFilialeDetails(body: any) {
+  if (body.details === undefined) return;
+  const detailsStr = typeof body.details === "string" ? body.details : "";
+  const items = detailsStr
+    .split("\n")
+    .map((line: string) => line.trim())
+    .filter((line: string) => line.length > 0);
+  body.details_json = items.length > 0 ? { items } : null;
+  delete body.details;
+}
+
 adminFiliales.post("/", async (c) => {
   const contentType = c.req.header("content-type") || "";
   let body: any;
@@ -169,6 +181,8 @@ adminFiliales.post("/", async (c) => {
   } else {
     body = await c.req.json();
   }
+
+  parseFilialeDetails(body);
 
   const parsed = adminFilialeSchema.safeParse(body);
   if (!parsed.success) return error(c, zodFirstMessage(parsed.error), 422);
@@ -202,6 +216,8 @@ adminFiliales.put("/:id", async (c) => {
     .limit(1);
 
   if (!existing) return error(c, "Filiale introuvable", 404);
+
+  parseFilialeDetails(body);
 
   const parsed = adminFilialeSchema.safeParse(body);
   if (!parsed.success) return error(c, zodFirstMessage(parsed.error), 422);
@@ -244,7 +260,10 @@ adminFiliales.delete("/:id", requireRole("admin"), async (c) => {
 export const adminGalerie = new Hono();
 
 adminGalerie.get("/", async (c) => {
-  const items = await db.select().from(galerie);
+  const items = await db
+    .select({ ...getTableColumns(galerie), filiale_nom: filiales.nom })
+    .from(galerie)
+    .leftJoin(filiales, eq(galerie.filiale, filiales.id));
   return success(c, items);
 });
 
@@ -326,7 +345,10 @@ adminGalerie.delete("/:id", requireRole("admin"), async (c) => {
 export const adminCatalogues = new Hono();
 
 adminCatalogues.get("/", async (c) => {
-  const items = await db.select().from(catalogues);
+  const items = await db
+    .select({ ...getTableColumns(catalogues), filiale_nom: filiales.nom })
+    .from(catalogues)
+    .leftJoin(filiales, eq(catalogues.filiale, filiales.id));
   return success(c, items);
 });
 

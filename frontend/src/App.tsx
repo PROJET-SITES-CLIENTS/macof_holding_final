@@ -30,6 +30,7 @@ import Transit from "./pages/filiales/Transit";
 import Mining from "./pages/filiales/Mining";
 import Fishing from "./pages/filiales/Fishing";
 import Print from "./pages/filiales/Print";
+import Promo from "./pages/Promo";
 
 import Login from "./pages/admin/Login";
 import DashboardLayout from "./pages/admin/DashboardLayout";
@@ -42,6 +43,7 @@ import PagesEditor from "./pages/admin/PagesEditor";
 import Settings from "./pages/admin/Settings";
 import StatsManager from "./pages/admin/StatsManager";
 import PartenairesManager from "./pages/admin/PartenairesManager";
+import NotificationsManager from "./pages/admin/NotificationsManager";
 import TemoignagesManager from "./pages/admin/TemoignagesManager";
 import RealisationsManager from "./pages/admin/RealisationsManager";
 import ProductDetails from "./pages/filiales/ProductDetails";
@@ -227,6 +229,16 @@ function AnimatedRoutes() {
           }
         />
 
+        {/* Publicité ouverte depuis une notification push */}
+        <Route
+          path="/promo/:id"
+          element={
+            <AnimatedPage>
+              <Promo />
+            </AnimatedPage>
+          }
+        />
+
         {/* Page 404 pour les URLs publiques inconnues */}
         <Route
           path="*"
@@ -301,6 +313,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="demandes" element={<Leads />} />
               <Route path="commandes" element={<CommandesManager />} />
+              <Route path="notifications" element={<NotificationsManager />} />
               <Route path="galerie" element={<GalerieManager />} />
               <Route path="catalogues" element={<CataloguesManager />} />
               <Route path="filiales" element={<FilialesManager />} />

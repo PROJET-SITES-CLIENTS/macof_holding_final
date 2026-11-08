@@ -169,6 +169,7 @@ export const adminFilialeSchema = z.object({
   slug: z.string().min(2, 'Le slug est requis (min 2 caracteres)').optional(),
   secteur: z.string().min(1, 'Le secteur est requis').optional(),
   description: z.string().optional(),
+  details_json: z.object({ items: z.array(z.string()) }).nullable().optional(),
   email: z.string().email('Email invalide').optional().or(z.literal('')),
   telephone: z.string().optional(),
   adresse: z.string().optional(),
@@ -214,3 +215,22 @@ export const demandeStatutSchema = z.object({
 });
 
 export type DemandeStatutInput = z.infer<typeof demandeStatutSchema>;
+
+// ─── Notifications push (PWA) ───────────────────────────────────────────────
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url('Endpoint invalide'),
+  keys: z.object({
+    p256dh: z.string().min(1, 'Cle p256dh requise'),
+    auth: z.string().min(1, 'Cle auth requise'),
+  }),
+  user_agent: z.string().optional(),
+}).strict();
+
+export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;
+
+export const pushUnsubscribeSchema = z.object({
+  endpoint: z.string().url('Endpoint invalide'),
+}).strict();
+
+export type PushUnsubscribeInput = z.infer<typeof pushUnsubscribeSchema>;

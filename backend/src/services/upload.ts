@@ -6,8 +6,18 @@ import { existsSync } from 'fs';
 const STORAGE_DIR = path.resolve(process.cwd(), 'storage', 'uploads');
 const LOCAL_BASE_URL = '/uploads';
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  // Campagnes publicitaires : courtes videos promos
+  'video/mp4',
+  'video/webm',
+];
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
+const MAX_VIDEO_SIZE_BYTES = 25 * 1024 * 1024;
 
 // Local storage fallback used when no Vercel Blob token is configured (dev mode).
 async function uploadFileLocal(file: File, folder: string): Promise<string> {
@@ -50,8 +60,11 @@ export async function uploadFile(file: File, folder: string): Promise<string> {
   if (!ALLOWED_MIME_TYPES.includes(file.type)) {
     throw new Error('Type de fichier non autorise');
   }
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    throw new Error('Fichier trop volumineux (8 Mo max)');
+  const maxSize = file.type.startsWith('video/') ? MAX_VIDEO_SIZE_BYTES : MAX_FILE_SIZE_BYTES;
+  if (file.size > maxSize) {
+    throw new Error(
+      file.type.startsWith('video/') ? 'Fichier trop volumineux (25 Mo max)' : 'Fichier trop volumineux (8 Mo max)'
+    );
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(folder)) {
     throw new Error('Dossier invalide');
