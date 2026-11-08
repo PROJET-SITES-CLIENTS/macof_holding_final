@@ -13,7 +13,7 @@ export function AdminPage({
   className?: string;
 }) {
   return (
-    <div className={`relative min-h-[200px] ${className}`}>
+    <div className="relative min-h-[200px]">
       {loading && (
         <div
           className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-2xl bg-[#0b1220]/70 backdrop-blur-[2px] pointer-events-auto select-none"
@@ -29,9 +29,11 @@ export function AdminPage({
         </div>
       )}
 
-      {/* Empêche les clics et le focus clavier sous l'overlay pendant le chargement */}
+      {/* Empêche les clics et le focus clavier sous l'overlay pendant le chargement.
+          Le className est appliqué ici (parent direct des enfants) pour que les
+          utilitaires d'espacement type space-y-* fonctionnent réellement. */}
       <div
-        className={loading ? 'pointer-events-none select-none' : undefined}
+        className={`${loading ? 'pointer-events-none select-none' : ''} ${className}`.trim()}
         aria-hidden={loading || undefined}
       >
         {children}

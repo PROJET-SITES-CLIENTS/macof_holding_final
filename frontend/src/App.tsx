@@ -50,6 +50,7 @@ import { CartProvider } from "./components/restauration/CartContext";
 
 import { AnimatedPage } from "./components/layout/AnimatedPage";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
+import { InstallPWAButton } from "./components/pwa/InstallPWAButton";
 import NotFound from "./components/NotFound";
 import CommandesManager from "./pages/admin/CommandesManager";
 import AdminsManager from "./pages/admin/AdminsManager";
@@ -277,6 +278,7 @@ function PublicLayout() {
         <AnimatedRoutes /> {/* 👈 Intégration des routes animées ici */}
       </main>
       <Footer />
+      <InstallPWAButton /> {/* Installation de l'app mobile (PWA) */}
     </div>
   );
 }
