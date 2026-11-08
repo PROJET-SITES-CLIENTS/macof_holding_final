@@ -284,7 +284,7 @@ export default function PagesEditor() {
       case 'image':
         return (
           <div className="space-y-3">
-            <div className="rounded-lg overflow-hidden border border-slate-700 bg-slate-900/50 aspect-video flex items-center justify-center">
+            <div className="rounded-lg overflow-hidden border border-white/10 bg-slate-900/60 aspect-video flex items-center justify-center">
               {section.image_url ? (
                 <img src={section.image_url} alt={section.key} className="w-full h-full object-cover" />
               ) : (
@@ -323,9 +323,9 @@ export default function PagesEditor() {
               value={section.value || ''}
               onChange={(e) => updateSectionValue(section.key, e.target.value)}
               rows={6}
-              className={`w-full bg-slate-800 border ${
-                valid ? 'border-slate-600 focus:border-amber-500' : 'border-red-500 focus:border-red-400'
-              } rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none transition-colors font-mono resize-y`}
+              className={`w-full bg-slate-900/60 border ${
+                valid ? 'border-white/10 focus:border-[#cda434]/50' : 'border-red-500 focus:border-red-400'
+              } rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#cda434]/20 transition-colors font-mono resize-y`}
             />
           </div>
         );
@@ -338,6 +338,22 @@ export default function PagesEditor() {
   return (
     <AdminPage loading={loading}>
       <div className="space-y-8">
+        {/* En-tête de page */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cda434]/80">CMS du site</p>
+            <h2 className="mt-1.5 text-2xl font-bold text-slate-100 flex items-center gap-3">
+              <span className="h-11 w-11 rounded-xl bg-gradient-to-br from-[#cda434]/20 to-transparent border border-[#cda434]/20 flex items-center justify-center text-[#cda434]">
+                <FileCode className="h-5 w-5" />
+              </span>
+              Éditeur de pages
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Modifiez le contenu des pages publiques du site MACOF.
+            </p>
+          </div>
+        </div>
+
         {/* Onglets de pages — navigation par secteur avec icône reconnaissable
             pour chaque activité du groupe. Repli automatique sur plusieurs
             lignes : jamais de barre de défilement horizontal. */}
@@ -369,7 +385,7 @@ export default function PagesEditor() {
               {currentPageMeta && <currentPageMeta.icon className="h-5 w-5" />}
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-100">{currentPageMeta?.label || selectedPage}</h2>
+              <h2 className="text-xl font-bold text-slate-100">{currentPageMeta?.label || selectedPage}</h2>
               <p className="text-slate-500 text-xs mt-1">
                 {pageData?.sections?.length || 0} section{(pageData?.sections?.length || 0) > 1 ? 's' : ''}
                 {dirtyCount > 0 && (

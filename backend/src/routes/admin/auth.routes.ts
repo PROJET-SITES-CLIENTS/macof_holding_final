@@ -1,12 +1,15 @@
 import { Hono } from "hono";
 import { type ZodError } from "zod";
-import { eq, count, desc, sql, and } from "drizzle-orm";
+import { eq, count, desc, sql, and, asc, getTableColumns } from "drizzle-orm";
+import { hash, compare } from "bcryptjs";
 import { db } from "../../db/client";
 import { administrateurs, catalogues, demandes_contact, filiales, galerie, page_contents, settings } from "../../db/schema";
 import { deleteFile, uploadFile } from "../../services/upload";
 import { authMiddleware, requireRole } from "../../middleware/auth";
 import {
   adminCatalogueSchema,
+  adminCreateSchema,
+  adminEditSchema,
   adminFilialeSchema,
   adminGalerieSchema,
   demandeStatutSchema,
@@ -94,6 +97,7 @@ adminDashboard.get("/", async (c) => {
 
   return success(c, {
     demandes: demandes,
+    total_demandes: demandes,
     filiales: filialesCount,
     galerie: galerieCount,
     catalogues: cataloguesCount,
@@ -110,8 +114,12 @@ adminDemandes.get("/", async (c) => {
   const limit = limitParam > 0 ? Math.min(limitParam, 500) : undefined;
 
   const baseQuery = db
-    .select()
+    .select({
+      ...getTableColumns(demandes_contact),
+      filiale_nom: filiales.nom,
+    })
     .from(demandes_contact)
+    .leftJoin(filiales, eq(demandes_contact.filiale, filiales.id))
     .orderBy(desc(demandes_contact.created_at));
 
   const list = limit ? await baseQuery.limit(limit) : await baseQuery;
@@ -539,6 +547,18 @@ adminSettings.put("/:key", async (c) => {
 // ─── 8. Profile Administrateur Router ───────────────────────────────────────
 export const adminProfile = new Hono();
 
+// Colonnes publiques d'un administrateur (jamais password_hash)
+const adminPublicColumns = {
+  id: administrateurs.id,
+  nom: administrateurs.nom,
+  email: administrateurs.email,
+  avatar_url: administrateurs.avatar_url,
+  role: administrateurs.role,
+  filiale_attribuee: administrateurs.filiale_attribuee,
+  archived: administrateurs.archived,
+  created_at: administrateurs.created_at,
+};
+
 function getAuthenticatedAdminId(c: any): number | null {
   const user = c.get("user") || c.get("jwtPayload");
   const rawId = user?.sub ?? user?.id;
@@ -586,12 +606,152 @@ adminProfile.put("/", async (c) => {
     .update(administrateurs)
     .set(updatePayload)
     .where(eq(administrateurs.id, userId))
-    .returning();
+    .returning(adminPublicColumns);
 
   return success(c, updated, "Profil mis a jour");
 });
 
-// ─── 9. Upload Router ───────────────────────────────────────────────────────
+// Changement de mot de passe par l'administrateur connecte
+adminProfile.put("/password", async (c) => {
+  const userId = getAuthenticatedAdminId(c);
+  if (!userId) return error(c, "Non autorise", 401);
+
+  const body = await c.req.json().catch(() => ({}));
+  const currentPassword = typeof body?.current_password === "string" ? body.current_password : "";
+  const newPassword = typeof body?.new_password === "string" ? body.new_password : "";
+
+  if (!currentPassword || !newPassword) return error(c, "Champs requis", 422);
+  if (newPassword.length < 8) {
+    return error(c, "Le nouveau mot de passe doit contenir au moins 8 caracteres", 422);
+  }
+
+  const [admin] = await db
+    .select({ password_hash: administrateurs.password_hash })
+    .from(administrateurs)
+    .where(eq(administrateurs.id, userId))
+    .limit(1);
+
+  if (!admin) return error(c, "Utilisateur introuvable", 404);
+
+  const isValid = await compare(currentPassword, admin.password_hash);
+  if (!isValid) return error(c, "Mot de passe actuel incorrect", 401);
+
+  const password_hash = await hash(newPassword, 10);
+
+  await db
+    .update(administrateurs)
+    .set({ password_hash, updated_at: new Date() })
+    .where(eq(administrateurs.id, userId));
+
+  return success(c, null, "Mot de passe mis a jour");
+});
+
+// ─── 9. Administrateurs Router (admin uniquement) ────────────────────────────
+export const adminAdministrateurs = new Hono();
+adminAdministrateurs.use("*", requireRole("admin"));
+
+// Normalise filiale_attribuee : "" -> null, "3" -> 3
+function normalizeFilialeAttribuee(body: any) {
+  if (body?.filiale_attribuee === "") body.filiale_attribuee = null;
+  else if (body?.filiale_attribuee !== undefined && body.filiale_attribuee !== null) {
+    body.filiale_attribuee = Number(body.filiale_attribuee);
+  }
+  return body;
+}
+
+adminAdministrateurs.get("/", async (c) => {
+  const list = await db
+    .select({
+      ...adminPublicColumns,
+      filiale_nom: filiales.nom,
+    })
+    .from(administrateurs)
+    .leftJoin(filiales, eq(administrateurs.filiale_attribuee, filiales.id))
+    .orderBy(asc(administrateurs.id));
+
+  return success(c, list);
+});
+
+adminAdministrateurs.post("/", async (c) => {
+  const body = normalizeFilialeAttribuee(await c.req.json().catch(() => ({})));
+
+  const parsed = adminCreateSchema.safeParse(body);
+  if (!parsed.success) return error(c, zodFirstMessage(parsed.error), 422);
+
+  const { password, ...data } = parsed.data;
+
+  // Email unique
+  const [existing] = await db
+    .select({ id: administrateurs.id })
+    .from(administrateurs)
+    .where(eq(administrateurs.email, data.email))
+    .limit(1);
+
+  if (existing) return error(c, "Email deja utilise", 409);
+
+  const password_hash = await hash(password, 10);
+
+  const created = await db
+    .insert(administrateurs)
+    .values({ ...data, password_hash })
+    .returning(adminPublicColumns);
+
+  return success(c, created[0], "Administrateur cree", 201);
+});
+
+adminAdministrateurs.put("/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id)) return error(c, "ID invalide", 400);
+
+  const body = normalizeFilialeAttribuee(await c.req.json().catch(() => ({})));
+
+  const parsed = adminEditSchema.safeParse(body);
+  if (!parsed.success) return error(c, zodFirstMessage(parsed.error), 422);
+
+  if (Object.keys(parsed.data).length === 0) {
+    return error(c, "Aucun champ a mettre a jour", 422);
+  }
+
+  const [updated] = await db
+    .update(administrateurs)
+    .set({ ...parsed.data, updated_at: new Date() })
+    .where(eq(administrateurs.id, id))
+    .returning(adminPublicColumns);
+
+  if (!updated) return error(c, "Administrateur introuvable", 404);
+  return success(c, updated, "Administrateur mis a jour");
+});
+
+adminAdministrateurs.put("/:id/password", async (c) => {
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id)) return error(c, "ID invalide", 400);
+
+  const body = await c.req.json().catch(() => ({}));
+  const newPassword = typeof body?.new_password === "string" ? body.new_password : "";
+
+  if (newPassword.length < 8) {
+    return error(c, "Le nouveau mot de passe doit contenir au moins 8 caracteres", 422);
+  }
+
+  const [existing] = await db
+    .select({ id: administrateurs.id })
+    .from(administrateurs)
+    .where(eq(administrateurs.id, id))
+    .limit(1);
+
+  if (!existing) return error(c, "Administrateur introuvable", 404);
+
+  const password_hash = await hash(newPassword, 10);
+
+  await db
+    .update(administrateurs)
+    .set({ password_hash, updated_at: new Date() })
+    .where(eq(administrateurs.id, id));
+
+  return success(c, null, "Mot de passe reinitialise");
+});
+
+// ─── 10. Upload Router ───────────────────────────────────────────────────────
 export const adminUpload = new Hono();
 adminUpload.use("*", requireRole("admin"));
 
@@ -619,7 +779,7 @@ adminUpload.post("/", async (c) => {
   );
 });
 
-// ─── 10. Router Principal Administration ────────────────────────────────────
+// ─── 11. Router Principal Administration ────────────────────────────────────
 export const adminRoutes = new Hono();
 adminRoutes.use("*", authMiddleware);
 adminRoutes.use("*", requireRole("admin", "gestionnaire"));
@@ -633,6 +793,7 @@ adminRoutes.route("/catalogues", adminCatalogues);
 adminRoutes.route("/pages", adminPages);
 adminRoutes.route("/settings", adminSettings);
 adminRoutes.route("/profile", adminProfile);
+adminRoutes.route("/administrateurs", adminAdministrateurs);
 adminRoutes.route("/upload", adminUpload);
 
 export default adminRoutes;

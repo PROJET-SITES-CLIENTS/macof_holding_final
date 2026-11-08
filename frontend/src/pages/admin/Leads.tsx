@@ -18,7 +18,8 @@ interface Lead {
   nom_complet: string;
   email: string;
   telephone: string;
-  filiale: string;
+  filiale?: number | null;
+  filiale_nom?: string | null;
   type_demande: string;
   objet: string;
   message: string;
@@ -59,8 +60,14 @@ export default function Leads() {
 
   });
 
-  // Extract unique filiales from data
-  const filiales = Array.from(new Set(leads.map((l) => l.filiale))).filter(Boolean).sort();
+  // Extract unique filiale names from data
+  const filiales = Array.from(
+    new Set(
+      leads
+        .map((l) => l.filiale_nom)
+        .filter((nom): nom is string => Boolean(nom))
+    )
+  ).sort((a, b) => a.localeCompare(b, 'fr'));
 
   // Filter leads
   const filteredLeads = leads.filter((lead) => {
@@ -71,7 +78,7 @@ export default function Leads() {
       (lead.email || '').toLowerCase().includes(query) ||
       (lead.reference && lead.reference.toLowerCase().includes(query));
     const matchStatut = !statutFilter || lead.statut === statutFilter;
-    const matchFiliale = !filialeFilter || lead.filiale === filialeFilter;
+    const matchFiliale = !filialeFilter || lead.filiale_nom === filialeFilter;
     return matchSearch && matchStatut && matchFiliale;
   });
 
@@ -240,7 +247,7 @@ export default function Leads() {
                   <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-[#e0b83d]">
                     {lead.reference || `#${lead.id}`}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-slate-400">{lead.filiale}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-slate-400">{lead.filiale_nom || '—'}</td>
                   <td className="px-6 py-4">
                     <div className="font-medium text-slate-200">{lead.nom_complet}</div>
                     <div className="mt-0.5 text-xs text-slate-500">{lead.email}</div>
@@ -402,7 +409,7 @@ export default function Leads() {
                   <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                     Filiale
                   </span>
-                  <p className="mt-1 text-slate-200">{showDetails.filiale}</p>
+                  <p className="mt-1 text-slate-200">{showDetails.filiale_nom || '—'}</p>
                 </div>
                 <div>
                   <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">

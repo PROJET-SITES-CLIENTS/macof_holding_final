@@ -92510,6 +92510,19 @@ var adminUpdateSchema = external_exports.object({
   filiale_attribuee: external_exports.number().int().positive().nullable().optional(),
   archived: external_exports.boolean().optional()
 });
+var adminCreateSchema = external_exports.object({
+  nom: external_exports.string().min(2, "Le nom est requis (min 2 caracteres)"),
+  email: external_exports.string().email("Email invalide"),
+  password: external_exports.string().min(8, "Le mot de passe doit contenir au moins 8 caracteres"),
+  role: external_exports.enum(["admin", "gestionnaire"]),
+  filiale_attribuee: external_exports.number().int().positive("Filiale invalide").nullable().optional()
+}).strict();
+var adminEditSchema = external_exports.object({
+  nom: external_exports.string().min(2, "Le nom est requis").optional(),
+  role: external_exports.enum(["admin", "gestionnaire"]).optional(),
+  filiale_attribuee: external_exports.number().int().positive("Filiale invalide").nullable().optional(),
+  archived: external_exports.boolean().optional()
+}).strict();
 var changePasswordSchema = external_exports.object({
   currentPassword: external_exports.string().min(1, "Le mot de passe actuel est requis"),
   newPassword: external_exports.string().min(8, "Le nouveau mot de passe doit contenir au moins 8 caracteres")
@@ -93929,6 +93942,7 @@ adminDashboard.get("/", async (c) => {
   ]);
   return success3(c, {
     demandes,
+    total_demandes: demandes,
     filiales: filialesCount,
     galerie: galerieCount,
     catalogues: cataloguesCount,
@@ -93940,7 +93954,10 @@ var adminDemandes = new Hono2();
 adminDemandes.get("/", async (c) => {
   const limitParam = parseInt(c.req.query("limit") || "0", 10);
   const limit = limitParam > 0 ? Math.min(limitParam, 500) : void 0;
-  const baseQuery = db.select().from(demandes_contact).orderBy(desc(demandes_contact.created_at));
+  const baseQuery = db.select({
+    ...getTableColumns(demandes_contact),
+    filiale_nom: filiales.nom
+  }).from(demandes_contact).leftJoin(filiales, eq(demandes_contact.filiale, filiales.id)).orderBy(desc(demandes_contact.created_at));
   const list2 = limit ? await baseQuery.limit(limit) : await baseQuery;
   return success3(c, list2);
 });
@@ -94237,6 +94254,16 @@ adminSettings.put("/:key", async (c) => {
   return success3(c, updated[0], "Parametre mis a jour");
 });
 var adminProfile = new Hono2();
+var adminPublicColumns = {
+  id: administrateurs.id,
+  nom: administrateurs.nom,
+  email: administrateurs.email,
+  avatar_url: administrateurs.avatar_url,
+  role: administrateurs.role,
+  filiale_attribuee: administrateurs.filiale_attribuee,
+  archived: administrateurs.archived,
+  created_at: administrateurs.created_at
+};
 function getAuthenticatedAdminId(c) {
   const user = c.get("user") || c.get("jwtPayload");
   const rawId = user?.sub ?? user?.id;
@@ -94268,8 +94295,80 @@ adminProfile.put("/", async (c) => {
     nom: body.nom === void 0 ? void 0 : String(body.nom || "").trim(),
     updated_at: /* @__PURE__ */ new Date()
   };
-  const [updated] = await db.update(administrateurs).set(updatePayload).where(eq(administrateurs.id, userId)).returning();
+  const [updated] = await db.update(administrateurs).set(updatePayload).where(eq(administrateurs.id, userId)).returning(adminPublicColumns);
   return success3(c, updated, "Profil mis a jour");
+});
+adminProfile.put("/password", async (c) => {
+  const userId = getAuthenticatedAdminId(c);
+  if (!userId) return error52(c, "Non autorise", 401);
+  const body = await c.req.json().catch(() => ({}));
+  const currentPassword = typeof body?.current_password === "string" ? body.current_password : "";
+  const newPassword = typeof body?.new_password === "string" ? body.new_password : "";
+  if (!currentPassword || !newPassword) return error52(c, "Champs requis", 422);
+  if (newPassword.length < 8) {
+    return error52(c, "Le nouveau mot de passe doit contenir au moins 8 caracteres", 422);
+  }
+  const [admin] = await db.select({ password_hash: administrateurs.password_hash }).from(administrateurs).where(eq(administrateurs.id, userId)).limit(1);
+  if (!admin) return error52(c, "Utilisateur introuvable", 404);
+  const isValid = await compare(currentPassword, admin.password_hash);
+  if (!isValid) return error52(c, "Mot de passe actuel incorrect", 401);
+  const password_hash = await hash(newPassword, 10);
+  await db.update(administrateurs).set({ password_hash, updated_at: /* @__PURE__ */ new Date() }).where(eq(administrateurs.id, userId));
+  return success3(c, null, "Mot de passe mis a jour");
+});
+var adminAdministrateurs = new Hono2();
+adminAdministrateurs.use("*", requireRole("admin"));
+function normalizeFilialeAttribuee(body) {
+  if (body?.filiale_attribuee === "") body.filiale_attribuee = null;
+  else if (body?.filiale_attribuee !== void 0 && body.filiale_attribuee !== null) {
+    body.filiale_attribuee = Number(body.filiale_attribuee);
+  }
+  return body;
+}
+adminAdministrateurs.get("/", async (c) => {
+  const list2 = await db.select({
+    ...adminPublicColumns,
+    filiale_nom: filiales.nom
+  }).from(administrateurs).leftJoin(filiales, eq(administrateurs.filiale_attribuee, filiales.id)).orderBy(asc(administrateurs.id));
+  return success3(c, list2);
+});
+adminAdministrateurs.post("/", async (c) => {
+  const body = normalizeFilialeAttribuee(await c.req.json().catch(() => ({})));
+  const parsed = adminCreateSchema.safeParse(body);
+  if (!parsed.success) return error52(c, zodFirstMessage(parsed.error), 422);
+  const { password, ...data } = parsed.data;
+  const [existing] = await db.select({ id: administrateurs.id }).from(administrateurs).where(eq(administrateurs.email, data.email)).limit(1);
+  if (existing) return error52(c, "Email deja utilise", 409);
+  const password_hash = await hash(password, 10);
+  const created = await db.insert(administrateurs).values({ ...data, password_hash }).returning(adminPublicColumns);
+  return success3(c, created[0], "Administrateur cree", 201);
+});
+adminAdministrateurs.put("/:id", async (c) => {
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id)) return error52(c, "ID invalide", 400);
+  const body = normalizeFilialeAttribuee(await c.req.json().catch(() => ({})));
+  const parsed = adminEditSchema.safeParse(body);
+  if (!parsed.success) return error52(c, zodFirstMessage(parsed.error), 422);
+  if (Object.keys(parsed.data).length === 0) {
+    return error52(c, "Aucun champ a mettre a jour", 422);
+  }
+  const [updated] = await db.update(administrateurs).set({ ...parsed.data, updated_at: /* @__PURE__ */ new Date() }).where(eq(administrateurs.id, id)).returning(adminPublicColumns);
+  if (!updated) return error52(c, "Administrateur introuvable", 404);
+  return success3(c, updated, "Administrateur mis a jour");
+});
+adminAdministrateurs.put("/:id/password", async (c) => {
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id)) return error52(c, "ID invalide", 400);
+  const body = await c.req.json().catch(() => ({}));
+  const newPassword = typeof body?.new_password === "string" ? body.new_password : "";
+  if (newPassword.length < 8) {
+    return error52(c, "Le nouveau mot de passe doit contenir au moins 8 caracteres", 422);
+  }
+  const [existing] = await db.select({ id: administrateurs.id }).from(administrateurs).where(eq(administrateurs.id, id)).limit(1);
+  if (!existing) return error52(c, "Administrateur introuvable", 404);
+  const password_hash = await hash(newPassword, 10);
+  await db.update(administrateurs).set({ password_hash, updated_at: /* @__PURE__ */ new Date() }).where(eq(administrateurs.id, id));
+  return success3(c, null, "Mot de passe reinitialise");
 });
 var adminUpload = new Hono2();
 adminUpload.use("*", requireRole("admin"));
@@ -94305,6 +94404,7 @@ adminRoutes.route("/catalogues", adminCatalogues);
 adminRoutes.route("/pages", adminPages);
 adminRoutes.route("/settings", adminSettings);
 adminRoutes.route("/profile", adminProfile);
+adminRoutes.route("/administrateurs", adminAdministrateurs);
 adminRoutes.route("/upload", adminUpload);
 var auth_routes_default2 = adminRoutes;
 

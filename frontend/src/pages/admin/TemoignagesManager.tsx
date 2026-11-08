@@ -171,13 +171,16 @@ export default function TemoignagesManager() {
     <AdminPage loading={loading}>
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-100 flex items-center gap-2.5">
-            <MessageSquareQuote className="h-6 w-6 text-[#cda434]" />
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cda434]/80">Page d'accueil</p>
+          <h2 className="mt-1.5 text-2xl font-bold text-slate-100 flex items-center gap-3">
+            <span className="h-11 w-11 rounded-xl bg-gradient-to-br from-[#cda434]/20 to-transparent border border-[#cda434]/20 flex items-center justify-center text-[#cda434]">
+              <MessageSquareQuote className="h-5 w-5" />
+            </span>
             Témoignages clients
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="mt-1 text-sm text-slate-500">
             Gérez les avis et témoignages affichés sur la page d'accueil (B2B).
           </p>
         </div>

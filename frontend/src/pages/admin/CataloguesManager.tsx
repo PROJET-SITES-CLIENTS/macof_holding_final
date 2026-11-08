@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { AdminPage } from '../../components/ui/AdminPage';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 interface Catalogue {
   id: number;
@@ -62,6 +63,7 @@ export default function CataloguesManager() {
   const [formFilialeId, setFormFilialeId] = useState<string>('');
   const [formType, setFormType] = useState('catalogue');
   const [formFile, setFormFile] = useState<File | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
@@ -160,10 +162,15 @@ export default function CataloguesManager() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Supprimer ce catalogue ?')) return;
+  const handleDelete = (id: number) => {
+    setItemToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (itemToDelete === null) return;
     try {
-      await api.delete(`/api/v1/admin/catalogues/${id}`);
+      await api.delete(`/api/v1/admin/catalogues/${itemToDelete}`);
+      setItemToDelete(null);
       fetchData();
     } catch (err: any) {
       console.error('Erreur suppression:', err);
@@ -181,10 +188,16 @@ export default function CataloguesManager() {
     <AdminPage loading={loading}>
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-100">Catalogues</h2>
-            <p className="text-sm text-slate-500 mt-1">Gérez les documents et catalogues du groupe.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cda434]/80">Documents</p>
+            <h2 className="mt-1.5 text-2xl font-bold text-slate-100 flex items-center gap-3">
+              <span className="h-11 w-11 rounded-xl bg-gradient-to-br from-[#cda434]/20 to-transparent border border-[#cda434]/20 flex items-center justify-center text-[#cda434]">
+                <FileText className="h-5 w-5" />
+              </span>
+              Catalogues
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">Gérez les documents et catalogues du groupe.</p>
           </div>
           <button
             onClick={openCreateModal}
@@ -386,6 +399,16 @@ export default function CataloguesManager() {
             </div>
           </div>
         )}
+
+        {/* Confirmation de suppression */}
+        <ConfirmModal
+          isOpen={itemToDelete !== null}
+          title="Supprimer le document"
+          message="Êtes-vous sûr de vouloir supprimer ce document ? Cette action est irréversible."
+          confirmText="Supprimer"
+          onConfirm={confirmDelete}
+          onCancel={() => setItemToDelete(null)}
+        />
       </div>
     </AdminPage>
   );

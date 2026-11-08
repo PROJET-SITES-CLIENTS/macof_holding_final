@@ -7,10 +7,11 @@ import {
   RefreshCw,
   Edit2,
   Image as ImageIcon,
-  AlertTriangle,
+  Award,
   Building2,
 } from 'lucide-react';
 import { AdminPage } from '../../components/ui/AdminPage';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { api } from '../../lib/api';
 import { getImageUrl } from '../../lib/utils';
 import { Link } from 'react-router-dom';
@@ -38,6 +39,7 @@ export default function RealisationsManager() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
@@ -190,12 +192,17 @@ export default function RealisationsManager() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Supprimer cette réalisation ?')) return;
+  const handleDelete = (id: number) => {
+    setItemToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (itemToDelete === null) return;
     setSaving(true);
     try {
-      await api.delete(`/api/v1/admin/galerie/${id}`);
-      setRealisations((current) => current.filter((item) => item.id !== id));
+      await api.delete(`/api/v1/admin/galerie/${itemToDelete}`);
+      setRealisations((current) => current.filter((item) => item.id !== itemToDelete));
+      setItemToDelete(null);
     } catch (err) {
       console.error('Erreur suppression:', err);
       alert("Erreur lors de la suppression.");
@@ -207,10 +214,16 @@ export default function RealisationsManager() {
   return (
     <AdminPage loading={loading} className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-100">Réalisations par filiale</h2>
-          <p className="text-sm text-slate-500 mt-1">Gérez les projets spécifiques affichés sur les pages des filiales.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cda434]/80">Pages des filiales</p>
+          <h2 className="mt-1.5 text-2xl font-bold text-slate-100 flex items-center gap-3">
+            <span className="h-11 w-11 rounded-xl bg-gradient-to-br from-[#cda434]/20 to-transparent border border-[#cda434]/20 flex items-center justify-center text-[#cda434]">
+              <Award className="h-5 w-5" />
+            </span>
+            Réalisations par filiale
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">Gérez les projets spécifiques affichés sur les pages des filiales.</p>
           <p className="text-xs text-slate-500 mt-2">
             Pour les images de la galerie publique, utilisez{' '}
             <Link to="/admin/galerie" className="text-[#e0b83d] hover:text-[#e0b83d]/80 underline underline-offset-2 decoration-[#cda434]/40 transition-colors">
@@ -226,12 +239,6 @@ export default function RealisationsManager() {
           <Plus className="h-4 w-4" />
           Ajouter une réalisation
         </button>
-      </div>
-
-      {/* Données partagées avec « Galerie » */}
-      <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.08] px-5 py-4 text-sm text-amber-300/90">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <p>Cette page et « Galerie » partagent les mêmes données. Toute modification ici apparaît dans l'autre page.</p>
       </div>
 
       {/* Filter / Filiale Selection */}
@@ -257,7 +264,7 @@ export default function RealisationsManager() {
             key={r.id}
             className="group bg-slate-900/60 border border-white/[0.06] rounded-2xl overflow-hidden backdrop-blur hover:-translate-y-1 hover:border-[#cda434]/30 transition-all duration-300 flex flex-col"
           >
-            <div className="relative aspect-video bg-slate-800 overflow-hidden">
+            <div className="relative aspect-video bg-slate-900/60 overflow-hidden">
               <img
                 src={getImageUrl(r.image)}
                 alt={r.title}
@@ -413,6 +420,16 @@ export default function RealisationsManager() {
           </div>
         </div>
       )}
+
+      {/* Confirmation de suppression */}
+      <ConfirmModal
+        isOpen={itemToDelete !== null}
+        title="Supprimer la réalisation"
+        message="Êtes-vous sûr de vouloir supprimer cette réalisation ? Cette action est irréversible."
+        confirmText="Supprimer"
+        onConfirm={confirmDelete}
+        onCancel={() => setItemToDelete(null)}
+      />
     </AdminPage>
   );
 }

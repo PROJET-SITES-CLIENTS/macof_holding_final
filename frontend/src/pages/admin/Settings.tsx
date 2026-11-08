@@ -10,6 +10,9 @@ import {
   Eye,
   EyeOff,
   Globe,
+  Settings as SettingsIcon,
+  ShieldCheck,
+  KeyRound,
 } from 'lucide-react';
 import { AdminPage } from '@/components/ui/AdminPage';
 import { useSettings } from '@/hooks/useSettings';
@@ -41,6 +44,41 @@ export default function Settings() {
 
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
+  const [pwdSaving, setPwdSaving] = useState(false);
+  const [showPwdFields, setShowPwdFields] = useState(false);
+
+  const handlePasswordChange = async () => {
+    if (pwd.next.length < 8) {
+      setNotification({ type: 'error', message: 'Le nouveau mot de passe doit contenir au moins 8 caractères.' });
+      return;
+    }
+    if (pwd.next !== pwd.confirm) {
+      setNotification({ type: 'error', message: 'Les deux nouveaux mots de passe ne correspondent pas.' });
+      return;
+    }
+    setPwdSaving(true);
+    try {
+      const res = await api.put('/api/v1/admin/profile/password', {
+        current_password: pwd.current,
+        new_password: pwd.next,
+      });
+      if (res.data?.success) {
+        setNotification({ type: 'success', message: 'Mot de passe mis à jour avec succès.' });
+        setPwd({ current: '', next: '', confirm: '' });
+        setShowPwdFields(false);
+      } else {
+        setNotification({ type: 'error', message: res.data?.message || 'Échec de la mise à jour.' });
+      }
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err?.response?.data?.message || 'Échec de la mise à jour du mot de passe.',
+      });
+    } finally {
+      setPwdSaving(false);
+    }
+  };
   const [passwordChanged, setPasswordChanged] = useState(false);
 
   const [form, setForm] = useState<SettingsData>({
@@ -211,7 +249,7 @@ export default function Settings() {
   };
 
   return (
-    <AdminPage loading={loading} className="max-w-4xl space-y-6">
+    <AdminPage loading={loading} className="space-y-8">
       {/* Notification */}
       {notification && (
         <div
@@ -231,10 +269,16 @@ export default function Settings() {
       )}
 
       {/* En-tête de page */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-100">Paramètres généraux</h2>
-          <p className="text-sm text-slate-500 mt-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cda434]/80">Configuration</p>
+          <h2 className="mt-1.5 text-2xl font-bold text-slate-100 flex items-center gap-3">
+            <span className="h-11 w-11 rounded-xl bg-gradient-to-br from-[#cda434]/20 to-transparent border border-[#cda434]/20 flex items-center justify-center text-[#cda434]">
+              <SettingsIcon className="h-5 w-5" />
+            </span>
+            Paramètres généraux
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
             Configuration des contacts, SMTP et réseaux sociaux.
           </p>
         </div>
@@ -471,8 +515,8 @@ export default function Settings() {
           <div className="bg-slate-900/60 border border-white/[0.06] rounded-2xl overflow-hidden backdrop-blur">
             <div className="px-6 py-4 bg-white/[0.03] border-b border-white/[0.06]"><h3 className="text-sm font-semibold text-slate-100 tracking-wide">Commandes SEBA</h3></div>
             <div className="px-6 py-6 space-y-5">
-              <div><label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Frais de livraison (GNF)</label><input type="number" min="0" value={form.restauration_frais_livraison_gnf} onChange={(e) => updateForm('restauration_frais_livraison_gnf', parseInt(e.target.value, 10) || 0)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-sm text-slate-200" /></div>
-              <div><label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Acompte en ligne (%)</label><input type="number" min="1" max="100" value={form.restauration_acompte_pourcent} onChange={(e) => updateForm('restauration_acompte_pourcent', parseInt(e.target.value, 10) || 30)} className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-sm text-slate-200" /></div>
+              <div><label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Frais de livraison (GNF)</label><input type="number" min="0" value={form.restauration_frais_livraison_gnf} onChange={(e) => updateForm('restauration_frais_livraison_gnf', parseInt(e.target.value, 10) || 0)} className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-[#cda434]/50 focus:ring-2 focus:ring-[#cda434]/20 transition-all" /></div>
+              <div><label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Acompte en ligne (%)</label><input type="number" min="1" max="100" value={form.restauration_acompte_pourcent} onChange={(e) => updateForm('restauration_acompte_pourcent', parseInt(e.target.value, 10) || 30)} className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-[#cda434]/50 focus:ring-2 focus:ring-[#cda434]/20 transition-all" /></div>
             </div>
           </div>
 
@@ -517,6 +561,83 @@ export default function Settings() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Sécurité du compte — changement de mot de passe */}
+        <div className="bg-slate-900/60 border border-white/[0.06] rounded-2xl overflow-hidden backdrop-blur">
+          <div className="px-6 py-4 bg-white/[0.03] border-b border-white/[0.06] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-[#cda434]" />
+              <h3 className="text-sm font-semibold text-slate-100 tracking-wide">Sécurité du compte</h3>
+            </div>
+            {!showPwdFields && (
+              <button
+                type="button"
+                onClick={() => setShowPwdFields(true)}
+                className="inline-flex items-center gap-2 bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition-all"
+              >
+                <KeyRound className="h-4 w-4" />
+                Changer mon mot de passe
+              </button>
+            )}
+          </div>
+          {showPwdFields && (
+            <div className="px-6 py-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Mot de passe actuel *</label>
+                  <input
+                    type="password"
+                    value={pwd.current}
+                    onChange={(e) => setPwd({ ...pwd, current: e.target.value })}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-[#cda434]/50 focus:ring-2 focus:ring-[#cda434]/20 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Nouveau mot de passe *</label>
+                  <input
+                    type="password"
+                    value={pwd.next}
+                    onChange={(e) => setPwd({ ...pwd, next: e.target.value })}
+                    placeholder="Min. 8 caractères"
+                    className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-[#cda434]/50 focus:ring-2 focus:ring-[#cda434]/20 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Confirmer *</label>
+                  <input
+                    type="password"
+                    value={pwd.confirm}
+                    onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-[#cda434]/50 focus:ring-2 focus:ring-[#cda434]/20 transition-all"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPwdFields(false);
+                    setPwd({ current: '', next: '', confirm: '' });
+                  }}
+                  className="px-5 py-2.5 text-sm text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-xl transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePasswordChange}
+                  disabled={pwdSaving || !pwd.current || pwd.next.length < 8 || !pwd.confirm}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-[#cda434] to-[#e0b83d] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                >
+                  {pwdSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  Mettre à jour
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AdminPage>

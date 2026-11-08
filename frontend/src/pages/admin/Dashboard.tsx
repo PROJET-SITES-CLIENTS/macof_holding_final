@@ -1,5 +1,20 @@
 import { useState } from 'react';
-import { Mail, CheckCircle, AlertCircle, Building2, RefreshCw, Inbox, MousePointerClick } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  Mail,
+  CheckCircle,
+  AlertCircle,
+  Building2,
+  RefreshCw,
+  Inbox,
+  MousePointerClick,
+  UtensilsCrossed,
+  Image as ImageIcon,
+  FileText,
+  FileEdit,
+  Settings,
+  Plus,
+} from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { AdminPage } from '../../components/ui/AdminPage';
@@ -10,7 +25,8 @@ interface Demande {
   nom_complet: string;
   email: string;
   telephone: string;
-  filiale: string;
+  filiale?: number | null;
+  filiale_nom?: string | null;
   type_demande: string;
   statut: string;
   created_at: string;
@@ -20,6 +36,17 @@ interface Filiale {
   id: number;
   nom: string;
   statut: string;
+}
+
+interface Commande {
+  id: number;
+  reference: string;
+  nom_client: string;
+  total_gnf: number;
+  statut: string;
+  statut_paiement?: string;
+  created_at: string;
+  items?: unknown[];
 }
 
 function StatutBadge({ statut, onClick }: { statut: string; onClick?: () => void }) {
@@ -65,12 +92,13 @@ export default function Dashboard() {
   const { data, isLoading: loading } = useQuery({
     queryKey: ['dashboardData'],
     queryFn: async () => {
-      const [demandesRes, filialesRes, statsRes] = await Promise.all([
+      const [demandesRes, filialesRes, statsRes, commandesRes] = await Promise.all([
         api.get('/api/v1/admin/demandes?limit=100'),
         api.get('/api/v1/admin/filiales'),
         api.get('/api/v1/admin/dashboard/stats'),
+        api.get('/api/v1/admin/restauration/commandes').catch(() => null),
       ]);
-      return { demandesRes, filialesRes, statsRes };
+      return { demandesRes, filialesRes, statsRes, commandesRes };
     },
 
   });
@@ -80,6 +108,11 @@ export default function Dashboard() {
     : [];
   const filiales = data?.filialesRes?.data?.success ? data.filialesRes.data.data || [] : [];
   const stats = data?.statsRes?.data?.success ? data.statsRes.data.data : null;
+  const commandes: Commande[] = data?.commandesRes?.data?.success
+    ? (Array.isArray(data.commandesRes.data.data)
+        ? data.commandesRes.data.data
+        : data.commandesRes.data.data?.items || [])
+    : [];
 
   const kpi = {
     total: stats?.total_demandes ?? demandes.length,
@@ -116,15 +149,61 @@ export default function Dashboard() {
     });
   };
 
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return `${date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })} ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  const formatGnf = (value: number | null | undefined) =>
+    value == null ? '—' : `${new Intl.NumberFormat('fr-FR').format(value)} GNF`;
+
   const recentDemandes = [...demandes]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 10);
 
+  const recentCommandes = [...commandes]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+
+  const commandeStatutStyles: Record<string, string> = {
+    en_attente: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    confirmee: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    en_preparation: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    en_livraison: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+    livree: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    annulee: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+  };
+  const commandeStatutDots: Record<string, string> = {
+    en_attente: 'bg-amber-400',
+    confirmee: 'bg-blue-400',
+    en_preparation: 'bg-orange-400',
+    en_livraison: 'bg-sky-400',
+    livree: 'bg-emerald-400',
+    annulee: 'bg-slate-400',
+  };
+  const commandeStatutLabels: Record<string, string> = {
+    en_attente: 'En attente',
+    confirmee: 'Confirmée',
+    en_preparation: 'En préparation',
+    en_livraison: 'En livraison',
+    livree: 'Livrée',
+    annulee: 'Annulée',
+  };
+
+  const quickLinks = [
+    { label: 'Produit', to: '/admin/menu/produits', icon: UtensilsCrossed },
+    { label: 'Réalisation', to: '/admin/galerie', icon: ImageIcon },
+    { label: 'Catalogue', to: '/admin/catalogues', icon: FileText },
+    { label: 'Contenus', to: '/admin/pages', icon: FileEdit },
+    { label: 'Paramètres', to: '/admin/settings', icon: Settings },
+  ];
 
   const kpiCards = [
     {
       label: 'Total demandes',
       value: kpi.total,
+      to: '/admin/demandes',
       icon: Mail,
       color: 'text-blue-400',
       tile: 'bg-gradient-to-br from-blue-500/20 to-blue-500/5 ring-1 ring-blue-500/20',
@@ -133,6 +212,7 @@ export default function Dashboard() {
     {
       label: 'Traitées',
       value: kpi.traite,
+      to: '/admin/demandes',
       icon: CheckCircle,
       color: 'text-emerald-400',
       tile: 'bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 ring-1 ring-emerald-500/20',
@@ -141,6 +221,7 @@ export default function Dashboard() {
     {
       label: 'Nouvelles demandes',
       value: kpi.nouveau,
+      to: '/admin/demandes',
       icon: AlertCircle,
       color: 'text-amber-400',
       tile: 'bg-gradient-to-br from-amber-500/20 to-amber-500/5 ring-1 ring-amber-500/20',
@@ -149,6 +230,7 @@ export default function Dashboard() {
     {
       label: 'Filiales actives',
       value: kpi.filialesActives,
+      to: '/admin/filiales',
       icon: Building2,
       color: 'text-[#e0b83d]',
       tile: 'bg-gradient-to-br from-[#cda434]/25 to-[#cda434]/5 ring-1 ring-[#cda434]/25',
@@ -183,9 +265,10 @@ export default function Dashboard() {
         {kpiCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div
+            <Link
               key={card.label}
-              className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-slate-900/60 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-[#cda434]/30 hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)]"
+              to={card.to}
+              className="group relative block cursor-pointer overflow-hidden rounded-2xl border border-white/[0.06] bg-slate-900/60 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-[#cda434]/30 hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cda434]/40"
             >
               <div
                 className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${card.glow} to-transparent blur-2xl`}
@@ -201,7 +284,28 @@ export default function Dashboard() {
               <p className="relative mt-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
                 {card.label}
               </p>
-            </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Accès rapides */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cda434]/80">
+          Accès rapides
+        </span>
+        {quickLinks.map((link) => {
+          const Icon = link.icon;
+          return (
+            <Link
+              key={link.to}
+              to={link.to}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-slate-300 transition-all duration-300 hover:border-[#cda434]/30 hover:bg-[#cda434]/10 hover:text-[#e0b83d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cda434]/40"
+            >
+              <Plus className="h-3.5 w-3.5 text-[#e0b83d]" />
+              <Icon className="h-4 w-4" />
+              {link.label}
+            </Link>
           );
         })}
       </div>
@@ -244,7 +348,7 @@ export default function Dashboard() {
                   <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-200">
                     {d.nom_complet}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-slate-400">{d.filiale}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-slate-400">{d.filiale_nom || '—'}</td>
                   <td className="whitespace-nowrap px-6 py-4">
                     {updatingId === d.id ? (
                       <RefreshCw className="h-4 w-4 animate-spin text-slate-400" />
@@ -271,6 +375,82 @@ export default function Dashboard() {
                         Les nouvelles demandes de contact apparaîtront ici en temps réel.
                       </p>
                     </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Dernières commandes */}
+      <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-slate-900/60 backdrop-blur">
+        <div className="flex flex-col gap-3 border-b border-white/[0.06] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-slate-100">Dernières commandes</h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Restauration SEBA — activité la plus récente
+            </p>
+          </div>
+          <Link
+            to="/admin/commandes"
+            className="inline-flex w-fit items-center gap-1 text-sm font-medium text-[#e0b83d] transition-colors duration-300 hover:text-[#cda434] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cda434]/40"
+          >
+            Voir tout
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+
+        <div className="overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white/[0.03] text-[11px] uppercase tracking-wider text-slate-500">
+              <tr>
+                <th className="px-6 py-3.5 font-medium">Date</th>
+                <th className="px-6 py-3.5 font-medium">Réf.</th>
+                <th className="px-6 py-3.5 font-medium">Client</th>
+                <th className="px-6 py-3.5 font-medium">Montant</th>
+                <th className="px-6 py-3.5 font-medium">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentCommandes.map((c) => (
+                <tr
+                  key={c.id}
+                  className="border-b border-white/[0.04] transition-colors duration-300 last:border-0 hover:bg-white/[0.02]"
+                >
+                  <td className="whitespace-nowrap px-6 py-4 text-slate-500">
+                    {formatDateTime(c.created_at)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-[#e0b83d]">
+                    {c.reference || `#${c.id}`}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-200">
+                    {c.nom_client || '—'}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-slate-300">
+                    {formatGnf(c.total_gnf)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                        commandeStatutStyles[c.statut] ||
+                        'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          commandeStatutDots[c.statut] || 'bg-slate-400'
+                        }`}
+                      />
+                      {commandeStatutLabels[c.statut] || c.statut}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {recentCommandes.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
+                    Aucune commande enregistrée pour le moment.
                   </td>
                 </tr>
               )}

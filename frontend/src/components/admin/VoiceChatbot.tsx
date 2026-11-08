@@ -90,7 +90,7 @@ export function VoiceChatbot() {
 
   if (!browserSupportsSpeechRecognition) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md">
+      <div className="flex items-center gap-1.5 rounded-xl border border-[#cda434]/30 bg-[#cda434]/10 px-2.5 py-1 text-xs text-[#e0b83d]">
         <MicOff className="h-3.5 w-3.5" />
         <span>Navigateur non compatible</span>
       </div>
@@ -99,7 +99,7 @@ export function VoiceChatbot() {
 
   if (!isMicrophoneAvailable) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-md">
+      <div className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs text-red-400">
         <MicOff className="h-3.5 w-3.5" />
         <span>Micro indisponible</span>
       </div>
@@ -109,16 +109,16 @@ export function VoiceChatbot() {
   return (
     <div className="relative flex items-center gap-2">
       {lastResponse && (
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 max-w-xs truncate">
-          <Volume2 className="h-3.5 w-3.5 text-[#cda434] shrink-0" />
+        <div className="hidden max-w-xs items-center gap-2 truncate rounded-xl border border-[#cda434]/30 bg-[#cda434]/10 px-3 py-1.5 text-xs text-slate-300 md:flex">
+          <Volume2 className="h-3.5 w-3.5 shrink-0 text-[#cda434]" />
           <span className="truncate">{lastResponse}</span>
         </div>
       )}
 
       {/* Texte capturé en temps réel */}
       {listening && (
-        <div className="flex items-center gap-2 bg-slate-800 border border-red-500/50 px-3 py-1 rounded-lg">
-          <span className="text-xs text-red-400 font-medium animate-pulse max-w-[200px] truncate">
+        <div className="flex items-center gap-2 rounded-xl border border-[#cda434]/30 bg-[#cda434]/10 px-3 py-1">
+          <span className="max-w-[200px] truncate text-xs font-medium text-[#e0b83d]">
             {transcript ? transcript : "Parlez..."}
           </span>
           {transcript.trim().length > 0 && (
@@ -127,7 +127,7 @@ export function VoiceChatbot() {
                 SpeechRecognition.stopListening();
                 handleSendVoiceCommand(transcript);
               }}
-              className="text-xs bg-red-500 hover:bg-red-600 text-white p-1 rounded transition-colors"
+              className="rounded-lg bg-gradient-to-r from-[#cda434] to-[#e0b83d] p-1 text-[#1a1405] transition-all duration-300 hover:brightness-110"
               title="Envoyer la commande"
             >
               <Send className="h-3 w-3" />
@@ -141,12 +141,12 @@ export function VoiceChatbot() {
         onClick={handleToggleListening}
         disabled={isProcessing}
         title={listening ? "Cliquez pour arrêter et envoyer" : "Démarrer l'enregistrement"}
-        className={`relative flex items-center justify-center h-9 w-9 rounded-full transition-all duration-300 ${
+        className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 ${
           listening
-            ? "bg-red-500 text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]"
+            ? "animate-pulse border border-[#cda434]/30 bg-[#cda434]/10 text-[#e0b83d] ring-2 ring-[#cda434]/40"
             : isProcessing
-            ? "bg-slate-700 text-[#cda434]"
-            : "bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700"
+            ? "border border-[#cda434]/30 bg-[#cda434]/10 text-[#e0b83d]"
+            : "border border-[#cda434]/30 bg-[#cda434]/10 text-[#e0b83d] hover:bg-[#cda434]/20"
         }`}
       >
         {isProcessing ? (

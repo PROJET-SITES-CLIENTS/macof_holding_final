@@ -118,6 +118,29 @@ export const adminUpdateSchema = z.object({
 
 export type AdminUpdateInput = z.infer<typeof adminUpdateSchema>;
 
+// ─── Admin creation (admin uniquement) ──────────────────────────────────
+
+export const adminCreateSchema = z.object({
+  nom: z.string().min(2, 'Le nom est requis (min 2 caracteres)'),
+  email: z.string().email('Email invalide'),
+  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caracteres'),
+  role: z.enum(['admin', 'gestionnaire']),
+  filiale_attribuee: z.number().int().positive('Filiale invalide').nullable().optional(),
+}).strict();
+
+export type AdminCreateInput = z.infer<typeof adminCreateSchema>;
+
+// ─── Admin edition (admin uniquement, whitelist stricte) ────────────────
+
+export const adminEditSchema = z.object({
+  nom: z.string().min(2, 'Le nom est requis').optional(),
+  role: z.enum(['admin', 'gestionnaire']).optional(),
+  filiale_attribuee: z.number().int().positive('Filiale invalide').nullable().optional(),
+  archived: z.boolean().optional(),
+}).strict();
+
+export type AdminEditInput = z.infer<typeof adminEditSchema>;
+
 // ─── Change password ──────────────────────────────────────────────────────
 
 export const changePasswordSchema = z.object({

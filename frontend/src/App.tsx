@@ -51,7 +51,8 @@ import { CartProvider } from "./components/restauration/CartContext";
 import { AnimatedPage } from "./components/layout/AnimatedPage";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import NotFound from "./components/NotFound";
-import MenuCommandesPage from "./components/restauration/MenuCommande";
+import CommandesManager from "./pages/admin/CommandesManager";
+import AdminsManager from "./pages/admin/AdminsManager";
 import MenuProduitsPage from "./pages/admin/RestaurationManager";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -297,6 +298,7 @@ function App() {
             <Route element={<DashboardLayout />}>
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="demandes" element={<Leads />} />
+              <Route path="commandes" element={<CommandesManager />} />
               <Route path="galerie" element={<GalerieManager />} />
               <Route path="catalogues" element={<CataloguesManager />} />
               <Route path="filiales" element={<FilialesManager />} />
@@ -309,9 +311,9 @@ function App() {
               <Route path="menu">
                 <Route index element={<Navigate to="produits" replace />} />
                 <Route path="produits" element={<MenuProduitsPage />} />
-                <Route path="commandes" element={<MenuCommandesPage />} />
               </Route>
               <Route path="settings" element={<Settings />} />
+              <Route path="administrateurs" element={<AdminsManager />} />
             </Route>
           </Route>
 

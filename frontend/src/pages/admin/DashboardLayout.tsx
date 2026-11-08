@@ -17,9 +17,9 @@ import {
   BarChart3,
   Users,
   MessageSquareQuote,
-  Briefcase,
+  ShoppingBag,
   UtensilsCrossed,
-  ChevronDown,
+  ShieldCheck,
   Camera,
   X as CloseIcon,
 } from 'lucide-react';
@@ -34,53 +34,42 @@ interface AdminUser {
   avatar_url?: string | null;
 }
 
-interface NavChild {
-  label: string;
-  path: string;
-}
-
 interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  path?: string;
-  children?: NavChild[];
+  path: string;
 }
 
 const navItems: NavItem[] = [
   { label: 'Tableau de bord', icon: LayoutDashboard, path: '/admin/dashboard' },
   { label: 'Demandes', icon: Mail, path: '/admin/demandes' },
+  { label: 'Commandes', icon: ShoppingBag, path: '/admin/commandes' },
+  { label: 'Produits SEBA', icon: UtensilsCrossed, path: '/admin/menu/produits' },
   { label: 'Filiales', icon: Building2, path: '/admin/filiales' },
-  { label: 'Réalisations', icon: Briefcase, path: '/admin/realisations' },
-  {
-    label: 'Menu',
-    icon: UtensilsCrossed,
-    children: [
-      { label: 'Produits', path: '/admin/menu/produits' },
-      { label: 'Commandes', path: '/admin/menu/commandes' },
-    ],
-  },
   { label: 'Galerie', icon: Image, path: '/admin/galerie' },
   { label: 'Catalogues', icon: FileText, path: '/admin/catalogues' },
   { label: 'Chiffres & Stats', icon: BarChart3, path: '/admin/stats' },
   { label: 'Partenaires', icon: Users, path: '/admin/partenaires' },
   { label: 'Témoignages', icon: MessageSquareQuote, path: '/admin/temoignages' },
   { label: 'Contenus', icon: FileEdit, path: '/admin/pages' },
+  { label: 'Administrateurs', icon: ShieldCheck, path: '/admin/administrateurs' },
   { label: 'Paramètres', icon: Settings, path: '/admin/settings' },
 ];
 
 const pageTitles: Record<string, string> = {
   '/admin/dashboard': 'Tableau de bord',
   '/admin/demandes': 'Demandes reçues',
+  '/admin/commandes': 'Commandes',
   '/admin/filiales': 'Filiales',
   '/admin/realisations': 'Réalisations par filiale',
-  '/admin/menu/produits': 'Produits du menu',
-  '/admin/menu/commandes': 'Commandes',
+  '/admin/menu/produits': 'Produits SEBA',
   '/admin/galerie': 'Galerie',
   '/admin/catalogues': 'Catalogues',
   '/admin/stats': 'Chiffres & Statistiques',
   '/admin/partenaires': 'Partenaires',
   '/admin/temoignages': 'Témoignages clients',
   '/admin/pages': 'Contenus',
+  '/admin/administrateurs': 'Administrateurs',
   '/admin/settings': 'Paramètres',
 };
 
@@ -109,7 +98,6 @@ export default function DashboardLayout() {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profilePreview, setProfilePreview] = useState<string | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     try {
@@ -122,16 +110,6 @@ export default function DashboardLayout() {
     }
   }, []);
 
-  useEffect(() => {
-    const activeGroup = navItems.find((item) =>
-      item.children?.some((child) => location.pathname.startsWith(child.path))
-    );
-    if (activeGroup && !openGroups[activeGroup.label]) {
-      setOpenGroups((prev) => ({ ...prev, [activeGroup.label]: true }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
-
   const { data: badges = {} } = useQuery({
     queryKey: ['dashboardBadges'],
     queryFn: async () => {
@@ -143,7 +121,7 @@ export default function DashboardLayout() {
           const nouvellesCommandes = response.data.data?.nouvelles_commandes ?? 0;
           return {
             '/admin/demandes': nouveauCount,
-            '/admin/menu/commandes': nouvellesCommandes,
+            '/admin/commandes': nouvellesCommandes,
           };
         }
       } catch {
@@ -171,9 +149,6 @@ export default function DashboardLayout() {
 
   const adminName = adminUser.name || adminUser.nom || adminUser.email || 'Admin';
   const currentPageTitle = pageTitles[location.pathname] || 'Tableau de bord';
-
-  const toggleGroup = (label: string) =>
-    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
 
   const openProfileModal = () => {
     setProfileImage(null);
@@ -206,9 +181,6 @@ export default function DashboardLayout() {
       setProfileSaving(false);
     }
   };
-
-  const groupBadgeTotal = (item: NavItem) =>
-    (item.children || []).reduce((sum, child) => sum + (badgeMap[child.path] || 0), 0);
 
   return (
     <div className="flex min-h-screen bg-[#0b1220]">
@@ -246,90 +218,25 @@ export default function DashboardLayout() {
         <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent">
           {navItems.map((item) => {
             const Icon = item.icon;
-
-            if (item.path) {
-              const isActive = location.pathname === item.path;
-              const badgeCount = badgeMap[item.path] || 0;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
-                    isActive ? activeItemClasses : idleItemClasses
-                  }`}
-                >
-                  <Icon
-                    className={`h-[18px] w-[18px] flex-shrink-0 ${
-                      isActive ? 'text-[#cda434]' : 'text-slate-500'
-                    }`}
-                  />
-                  <span className="flex-1">{item.label}</span>
-                  <CountBadge count={badgeCount} />
-                </Link>
-              );
-            }
-
-            const children = item.children || [];
-            const isGroupActive = children.some((child) =>
-              location.pathname.startsWith(child.path)
-            );
-            const isOpen = !!openGroups[item.label];
-            const badgeTotal = groupBadgeTotal(item);
-
+            const isActive = location.pathname === item.path;
+            const badgeCount = badgeMap[item.path] || 0;
             return (
-              <div key={item.label}>
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(item.label)}
-                  aria-expanded={isOpen}
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
-                    isGroupActive ? activeItemClasses : idleItemClasses
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
+                  isActive ? activeItemClasses : idleItemClasses
+                }`}
+              >
+                <Icon
+                  className={`h-[18px] w-[18px] flex-shrink-0 ${
+                    isActive ? 'text-[#cda434]' : 'text-slate-500'
                   }`}
-                >
-                  <Icon
-                    className={`h-[18px] w-[18px] flex-shrink-0 ${
-                      isGroupActive ? 'text-[#cda434]' : 'text-slate-500'
-                    }`}
-                  />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  <CountBadge count={badgeTotal} />
-                  <ChevronDown
-                    className={`h-4 w-4 flex-shrink-0 text-slate-500 transition-transform duration-300 ${
-                      isOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div
-                  className={`grid transition-all duration-300 ease-in-out ${
-                    isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <div className="ml-4 mt-1 space-y-1 border-l border-white/[0.08] pl-4">
-                      {children.map((child) => {
-                        const isActive = location.pathname === child.path;
-                        const badgeCount = badgeMap[child.path] || 0;
-                        return (
-                          <Link
-                            key={child.path}
-                            to={child.path}
-                            onClick={() => setSidebarOpen(false)}
-                            className={`relative flex items-center gap-3 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
-                              isActive
-                                ? 'bg-[#cda434]/10 text-[#e0b83d] before:absolute before:-left-4 before:top-1/2 before:h-4 before:w-[2px] before:-translate-y-1/2 before:rounded-full before:bg-[#cda434]'
-                                : 'text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]'
-                            }`}
-                          >
-                            <span className="flex-1">{child.label}</span>
-                            <CountBadge count={badgeCount} />
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                />
+                <span className="flex-1">{item.label}</span>
+                <CountBadge count={badgeCount} />
+              </Link>
             );
           })}
         </nav>
