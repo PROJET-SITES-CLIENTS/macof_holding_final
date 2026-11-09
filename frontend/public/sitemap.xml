@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/about</loc><priority>0.8</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/domaines</loc><priority>0.8</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/galerie</loc><priority>0.7</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/catalogues</loc><priority>0.7</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/partenaires</loc><priority>0.5</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/contact</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/immobilier</loc><priority>0.8</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/restauration</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/transit</loc><priority>0.8</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/mining</loc><priority>0.8</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/fishing</loc><priority>0.8</priority></url>
+  <url><loc>https://macof-holding-frontend-gray.vercel.app/print</loc><priority>0.8</priority></url>
+</urlset>

@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Image as ImageIcon,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '../../lib/api';
 import { AdminPage } from '../../components/ui/AdminPage';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
@@ -80,16 +81,24 @@ export default function GalerieManager() {
       !search ||
       (img.titre || '').toLowerCase().includes(search.toLowerCase()) ||
       String(filialeLabel).toLowerCase().includes(search.toLowerCase());
-    const matchFiliale = !filialeFilter || String(filialeLabel) === filialeFilter;
+    // Le select contient l'ID de la filiale : on compare donc sur l'ID, pas sur le nom.
+    const matchFiliale = !filialeFilter || String(img.filiale) === String(filialeFilter);
     return matchSearch && matchFiliale;
   });
+
+  // Nettoyage de l'objet URL pour éviter les fuites mémoire
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setFormFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -106,6 +115,7 @@ export default function GalerieManager() {
 
   const closeModal = () => {
     setModalOpen(false);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -127,7 +137,7 @@ export default function GalerieManager() {
       fetchData();
     } catch (err) {
       console.error('Erreur upload:', err);
-      alert('Erreur lors de l\'upload de l\'image.');
+      toast.error("Erreur lors de l'upload de l'image.");
     } finally {
       setUploading(false);
     }

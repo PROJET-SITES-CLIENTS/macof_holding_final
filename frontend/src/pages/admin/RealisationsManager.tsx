@@ -27,6 +27,7 @@ interface Realisation {
   title: string;
   desc: string;
   image: string;
+  type_projet: string;
 }
 
 export default function RealisationsManager() {
@@ -43,6 +44,7 @@ export default function RealisationsManager() {
 
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
+  const [formTypeProjet, setFormTypeProjet] = useState('autre');
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formFile, setFormFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -85,6 +87,7 @@ export default function RealisationsManager() {
               title: item.titre,
               desc: item.description_courte || '',
               image: item.image_path,
+              type_projet: item.type_projet || 'autre',
             }))
         );
       } catch (err) {
@@ -110,6 +113,7 @@ export default function RealisationsManager() {
     setEditId(null);
     setFormTitle('');
     setFormDesc('');
+    setFormTypeProjet('autre');
     setFormImageUrl('');
     setFormFile(null);
     setPreviewUrl(null);
@@ -120,6 +124,8 @@ export default function RealisationsManager() {
     setEditId(r.id);
     setFormTitle(r.title);
     setFormDesc(r.desc);
+    // Conserve la catégorie existante de l'item édité (défaut 'autre' uniquement en création)
+    setFormTypeProjet(r.type_projet || 'autre');
     setFormImageUrl(r.image);
     setFormFile(null);
     setPreviewUrl(r.image);
@@ -165,7 +171,7 @@ export default function RealisationsManager() {
         titre: formTitle,
         filiale: filiale.id,
         description_courte: formDesc,
-        type_projet: 'autre',
+        type_projet: formTypeProjet,
         image_path: finalImageUrl,
       };
       const response = editId
@@ -179,6 +185,7 @@ export default function RealisationsManager() {
         title: item.titre,
         desc: item.description_courte || '',
         image: item.image_path,
+        type_projet: item.type_projet || formTypeProjet,
       };
       setRealisations((current) => editId
         ? current.map((entry) => entry.id === editId ? savedItem : entry)

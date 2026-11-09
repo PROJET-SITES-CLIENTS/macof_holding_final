@@ -5,12 +5,13 @@ import { db } from "../db/client";
 import { page_contents } from "../db/schema";
 import { success, error } from "../utils/response";
 import { uploadFile } from "../services/upload";
-import { authMiddleware } from "../middleware/auth";
+import { authMiddleware, requireRole } from "../middleware/auth";
 
 const pagesRoutes = new Hono();
 
-// Authentification requise pour l'ecriture (POST), le GET reste public pour le site vitrine
-pagesRoutes.on("POST", "*", authMiddleware);
+// Ecriture CMS réservée aux rôles admin/gestionnaire (cohérent avec /api/v1/admin/pages),
+// le GET reste public pour le site vitrine
+pagesRoutes.on("POST", "*", authMiddleware, requireRole("admin", "gestionnaire"));
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",

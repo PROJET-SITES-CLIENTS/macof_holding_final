@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatedPage } from '../../components/layout/AnimatedPage';
 import { Button } from '../../components/ui/Button';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -15,7 +14,7 @@ const fallbackContent: Record<string, string> = {
   hero_title: 'SEBA International',
   hero_subtitle: "Domaine d'Excellence 02",
   hero_desc: "L'art culinaire porté à son paroxysme. Service traiteur, restauration collective et l'excellence SEBA International.",
-  hero_bg: '/plaquette-resto.jpeg',
+  hero_bg: '/plaquette-resto.webp',
   vision_title: 'Notre Philosophie',
   vision_text_1: "SEBA International s'impose comme une référence incontournable de la gastronomie et du service traiteur en Guinée. À travers notre marque phare SEBA International, nous offrons une expérience culinaire raffinée et mémorable.",
   vision_text_2: "Nos chefs élaborent des cartes qui allient les saveurs locales authentiques aux standards de la haute gastronomie internationale, garantissant une prestation sur-mesure pour chaque occasion.",
@@ -99,8 +98,7 @@ export default function Restauration() {
   }, []);
 
   return (
-    <AnimatedPage className="bg-background">
-      <div ref={containerRef}>
+    <div ref={containerRef} className="bg-background">
         {/* Header Filiale */}
         <section className="header-section relative h-screen flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 z-0">
@@ -245,7 +243,6 @@ export default function Restauration() {
         </section>
 
       </div>
-    </AnimatedPage>
   );
 }
 

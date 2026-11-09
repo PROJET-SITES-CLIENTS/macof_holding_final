@@ -14,6 +14,7 @@ import { api } from '../../lib/api';
 import { getImageUrl } from '../../lib/utils';
 import { AdminPage } from '../../components/ui/AdminPage';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { toast } from 'sonner';
 
 interface Partenaire {
   nom: string;
@@ -90,7 +91,7 @@ export default function PartenairesManager() {
       return true;
     } catch (err) {
       console.error('Erreur save partenaires:', err);
-      alert('Erreur lors de la sauvegarde.');
+      toast.error('Erreur lors de la sauvegarde.');
       return false;
     } finally {
       setSaving(false);
@@ -157,7 +158,7 @@ export default function PartenairesManager() {
       }
 
       if (!logoUrl) {
-        alert('Veuillez uploader un logo ou fournir une URL.');
+        toast.error('Veuillez uploader un logo ou fournir une URL.');
         setUploading(false);
         return;
       }
@@ -170,7 +171,7 @@ export default function PartenairesManager() {
       }
     } catch (err) {
       console.error('Erreur ajout partenaire:', err);
-      alert("Erreur lors de l'ajout.");
+      toast.error("Erreur lors de l'ajout.");
     } finally {
       setUploading(false);
     }

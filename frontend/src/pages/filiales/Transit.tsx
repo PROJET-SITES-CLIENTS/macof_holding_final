@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState , useMemo } from 'react';
-import { AnimatedPage } from '../../components/layout/AnimatedPage';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import gsap from 'gsap';
@@ -34,7 +33,16 @@ const fallbackServices = [
 export default function Transit() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [formStatus, setFormStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [formData, setFormData] = useState({ nom_complet: '', email: '', telephone: '', objet: '', message: '' });
+  const [formData, setFormData] = useState({
+    nom_complet: '', // Société
+    email: '', // Email pro
+    depart: '', // Port/Aéroport de départ
+    destination: '', // Destination
+    incoterm: 'FOB', // Incoterm
+    volume: '', // Volume (CBM/EVP)
+    poids: '', // Poids brut
+    message: '', // Description de la marchandise
+  });
   const [reference, setReference] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'logistique' | 'travel'>('logistique');
@@ -53,7 +61,7 @@ export default function Transit() {
     
   });
 
-  const { data: content, isLoading: loading } = useQuery({
+  const { data: content } = useQuery({
     queryKey: ['pageContent', SLUG],
     queryFn: async () => {
       try {
@@ -81,13 +89,23 @@ export default function Transit() {
     e.preventDefault();
     setFormStatus('loading');
     try {
-      const response = await api.post('/demandes', { ...formData, filiale: 'MACOF Transit', type_demande: 'devis' });
+      const trajet = [formData.depart, formData.destination].filter(Boolean).join(' → ');
+      const objet = [trajet, formData.incoterm, formData.volume, formData.poids].filter(Boolean).join(' | ');
+      const response = await api.post('/demandes', {
+        nom_complet: formData.nom_complet,
+        email: formData.email,
+        telephone: '',
+        objet,
+        message: formData.message,
+        filiale: 'MACOF Transit',
+        type_demande: 'devis',
+      });
       if (response.data.success) {
         setReference(response.data.data?.reference || '');
         setWhatsappUrl(response.data.data?.whatsapp_url || '');
       }
       setFormStatus('success');
-      setFormData({ nom_complet: '', email: '', telephone: '', objet: '', message: '' });
+      setFormData({ nom_complet: '', email: '', depart: '', destination: '', incoterm: 'FOB', volume: '', poids: '', message: '' });
     } catch (err) {
       console.error('Erreur formulaire:', err);
       setFormStatus('error');
@@ -118,8 +136,7 @@ export default function Transit() {
   }, []);
 
   return (
-    <AnimatedPage className="bg-white">
-      <div ref={containerRef} className="font-sans text-gray-900">
+    <div ref={containerRef} className="font-sans text-gray-900 bg-white">
         
         <section className="hero-section relative h-screen flex items-center justify-center overflow-hidden bg-black">
           <div className="absolute inset-0 z-0">
@@ -373,29 +390,29 @@ export default function Transit() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Société</label>
-                        <Input required placeholder="Votre entreprise" className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
+                        <Input required placeholder="Votre entreprise" value={formData.nom_complet} onChange={(e) => setFormData({ ...formData, nom_complet: e.target.value })} className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Email pro</label>
-                        <Input required type="email" placeholder="contact@..." className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
+                        <Input required type="email" placeholder="contact@..." value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Port/Aéroport de Départ</label>
-                        <Input required placeholder="Ex: Shanghai (CNSHA)" className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
+                        <Input required placeholder="Ex: Shanghai (CNSHA)" value={formData.depart} onChange={(e) => setFormData({ ...formData, depart: e.target.value })} className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Destination</label>
-                        <Input required placeholder="Ex: Conakry (GNCKY)" className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
+                        <Input required placeholder="Ex: Conakry (GNCKY)" value={formData.destination} onChange={(e) => setFormData({ ...formData, destination: e.target.value })} className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Incoterm</label>
-                        <select className="flex h-11 w-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600">
+                        <select value={formData.incoterm} onChange={(e) => setFormData({ ...formData, incoterm: e.target.value })} className="flex h-11 w-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600">
                           <option>FOB</option>
                           <option>CIF</option>
                           <option>EXW</option>
@@ -404,11 +421,11 @@ export default function Transit() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Volume (CBM/EVP)</label>
-                        <Input placeholder="Ex: 1x 40' HC" className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
+                        <Input placeholder="Ex: 1x 40' HC" value={formData.volume} onChange={(e) => setFormData({ ...formData, volume: e.target.value })} className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Poids Brut</label>
-                        <Input placeholder="Ex: 24 T" className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
+                        <Input placeholder="Ex: 24 T" value={formData.poids} onChange={(e) => setFormData({ ...formData, poids: e.target.value })} className="bg-gray-50 border-gray-200 focus:bg-white focus:border-red-600" />
                       </div>
                     </div>
 
@@ -417,6 +434,8 @@ export default function Transit() {
                       <textarea
                         required
                         rows={3}
+                        value={formData.message}
+                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         className="flex w-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600"
                         placeholder="Marchandise générale, périssable, classe OMI..."
                       />
@@ -432,8 +451,7 @@ export default function Transit() {
           </div>
         </section>
 
-      </div>
-    </AnimatedPage>
+    </div>
   );
 }
 

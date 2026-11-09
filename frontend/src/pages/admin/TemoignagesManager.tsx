@@ -119,6 +119,7 @@ export default function TemoignagesManager() {
   const handleFileUpload = async (id: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('folder', 'temoignages');
 
     try {
       const uploadRes = await api.post('/api/v1/admin/upload', formData, {

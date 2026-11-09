@@ -20,7 +20,10 @@ import { adminNotifications, pushRoutes } from './routes/push.routes';
 const app = new Hono();
 
 app.use('*', async (c, next) => {
-  console.log(`[REQ] ${c.req.method} ${c.req.url}`);
+  // Log des requêtes en développement uniquement (bruit/PII inutiles en prod)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[REQ] ${c.req.method} ${c.req.url}`);
+  }
   await next();
 });
 app.use('*', corsMiddleware());

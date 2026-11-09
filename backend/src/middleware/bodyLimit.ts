@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono';
 import { error } from '../utils/response';
 
-const MAX_BODY_SIZE_BYTES = 12 * 1024 * 1024; // 12 Mo
+const MAX_BODY_SIZE_BYTES = 30 * 1024 * 1024; // 30 Mo (vidéos de campagnes jusqu'à 25 Mo + marge multipart)
 
 export const bodyLimitMiddleware = async (c: Context, next: Next) => {
   const contentLength = c.req.header('content-length');

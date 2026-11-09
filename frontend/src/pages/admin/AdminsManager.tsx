@@ -45,6 +45,7 @@ export default function AdminsManager() {
   const [archiveTarget, setArchiveTarget] = useState<AdminUser | null>(null);
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   const [form, setForm] = useState({
     nom: '',
@@ -127,6 +128,7 @@ export default function AdminsManager() {
       });
       setResetTarget(null);
       setNewPassword('');
+      setShowResetPassword(false);
     } finally {
       setSaving(false);
     }
@@ -244,7 +246,10 @@ export default function AdminsManager() {
                       </button>
                       <button
                         title="Réinitialiser le mot de passe"
-                        onClick={() => setResetTarget(a)}
+                        onClick={() => {
+                          setShowResetPassword(false);
+                          setResetTarget(a);
+                        }}
                         className="mr-1 rounded-lg p-2 text-slate-400 transition-all hover:bg-white/10 hover:text-slate-200"
                       >
                         <KeyRound className="h-4 w-4" />
@@ -408,19 +413,30 @@ export default function AdminsManager() {
               </div>
               <div className="px-6 py-6">
                 <label className={labelClass}>Nouveau mot de passe (min. 8 caractères)</label>
-                <input
-                  type="text"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Nouveau mot de passe"
-                  className={inputClass}
-                />
+                <div className="relative">
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Nouveau mot de passe"
+                    className={`${inputClass} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    aria-label={showResetPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  >
+                    {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div className="flex justify-end gap-3 border-t border-white/[0.06] px-6 py-5">
                 <button
                   onClick={() => {
                     setResetTarget(null);
                     setNewPassword('');
+                    setShowResetPassword(false);
                   }}
                   className="rounded-xl px-5 py-2.5 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
                 >

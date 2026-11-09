@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatedPage } from '../../components/layout/AnimatedPage';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { mergeContent, getImageUrl, DEFAULT_FALLBACK_IMAGE, parseServices } from '../../lib/utils';
@@ -98,8 +97,7 @@ export default function Fishing() {
   }, []);
 
   return (
-    <AnimatedPage className="bg-background">
-      <div ref={containerRef}>
+    <div ref={containerRef} className="bg-background">
         
         {/* Header Filiale */}
         <section className="header-section relative h-screen flex items-center justify-center overflow-hidden">
@@ -340,6 +338,5 @@ export default function Fishing() {
         </section>
 
       </div>
-    </AnimatedPage>
   );
 }

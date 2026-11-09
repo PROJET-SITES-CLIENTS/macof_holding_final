@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { AnimatedPage } from '../components/layout/AnimatedPage';
 import { X, ZoomIn } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,14 +9,6 @@ import { Link } from 'react-router-dom';
 
 
 // Helper pour gérer les URLs relatives et absolues d'images
-const FILIALE_PAGES = [
-  { slug: 'restauration', nom: 'SEBA International' },
-  { slug: 'immobilier', nom: 'MACOF Immobilier SARL' },
-  { slug: 'fishing', nom: 'MACOF Fishing SARL' },
-  { slug: 'transit', nom: 'MACOF Transit SARL' },
-  { slug: 'print', nom: 'MACOF Print & Com SARL' },
-  { slug: 'mining', nom: 'MACOF Mining SARL' },
-];
 
 export default function Galerie() {
   const [activeFilter, setActiveFilter] = useState("Tous");
@@ -58,8 +49,8 @@ export default function Galerie() {
   }, [selectedImage]);
 
   return (
-    <AnimatedPage className="bg-[#050505] min-h-screen">
-      <div className="pt-32 pb-24">
+    <>
+      <div className="bg-[#050505] min-h-screen pt-32 pb-24">
         <div className="max-w-[100rem] mx-auto px-6 lg:px-12">
           
           <div className="mb-20 text-center">
@@ -149,9 +140,10 @@ export default function Galerie() {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-12"
             onClick={(e) => { if (e.target === e.currentTarget) { setSelectedImage(null); document.body.style.overflow = ''; } }}
           >
-            <button 
+            <button
               className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors z-50 p-2 rounded-full hover:bg-white/10"
               onClick={() => setSelectedImage(null)}
+              aria-label="Fermer"
             >
               <X size={32} strokeWidth={1} />
             </button>
@@ -177,6 +169,6 @@ export default function Galerie() {
           </motion.div>
         )}
       </AnimatePresence>
-    </AnimatedPage>
+    </>
   );
 }

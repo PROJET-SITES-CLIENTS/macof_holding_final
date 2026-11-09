@@ -1,4 +1,5 @@
 // src/components/restauration/OrderSuccessModal.tsx
+import { useEffect } from "react";
 import { PackageCheck, Truck, ArrowRight, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -9,15 +10,31 @@ interface OrderSuccessModalProps {
 }
 
 export function OrderSuccessModal({ isOpen, onClose, reference }: OrderSuccessModalProps) {
+  // Fermeture au clavier avec la touche Échap
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirmation de commande"
+    >
       <div className="relative w-full max-w-md bg-[#121212] border border-white/10 rounded-2xl p-6 md:p-8 text-white shadow-2xl text-center">
         {/* Bouton fermeture */}
         <button
           onClick={onClose}
           className="absolute right-4 top-4 text-white/40 hover:text-white transition p-1"
+          aria-label="Fermer"
         >
           <X size={20} />
         </button>

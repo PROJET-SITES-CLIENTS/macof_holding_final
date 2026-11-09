@@ -157,7 +157,7 @@ export function InstallPWAButton() {
         existing ??
         (await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlB64ToUint8Array(publicKey),
+          applicationServerKey: urlB64ToUint8Array(publicKey) as unknown as BufferSource,
         }));
 
       const response = await fetch(`${RAW_BASE_URL}/push/subscribe`, {

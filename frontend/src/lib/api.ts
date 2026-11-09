@@ -12,6 +12,8 @@ export const RAW_BASE_URL = cleanBaseUrl.includes("/api/v1")
 
 export const api = axios.create({
   baseURL: RAW_BASE_URL,
+  // Évite les spinners infinis quand le serveur ne répond pas
+  timeout: 30000,
 });
 
 // Intercepteur de requêtes
@@ -29,7 +31,7 @@ api.interceptors.request.use((config) => {
     config.headers = {
       ...config.headers,
       "Content-Type": "application/json",
-    };
+    } as typeof config.headers;
   }
 
   // 3. Injection dynamique du token JWT
@@ -46,21 +48,18 @@ let hasRedirectedToLogin = false;
 
 api.interceptors.response.use(
   (response) => {
-    // Affiche un toast de succès si le header indique que c'est une création/modification
-    if (response.status === 201 || response.status === 200) {
-      const method = response.config.method?.toUpperCase();
-      if (method === "POST" || method === "PUT" || method === "PATCH") {
-        toast.success("Opération réussie");
-      }
-    }
+    // Plus de toast global de succès : chaque page gère son propre retour
+    // (évite les doublons "Opération réussie" + message local)
     return response;
   },
   (error) => {
     const status = error?.response?.status;
     const message = error?.response?.data?.message || error?.message;
+    const requestUrl = error?.config?.url || "";
 
-    // Affiche le toast d'erreur
-    if (status === 401) {
+    // Affiche le toast d'erreur (sauf pour le login, géré par sa propre page)
+    const isLoginRequest = requestUrl.includes("/auth/login");
+    if (status === 401 && !isLoginRequest) {
       toast.error("Session expirée. Veuillez vous reconnecter.");
     } else if (status === 403) {
       toast.error("Accès refusé.");
@@ -70,7 +69,9 @@ api.interceptors.response.use(
       toast.error(message || "Données invalides.");
     } else if (status >= 500) {
       toast.error("Erreur serveur. Veuillez réessayer plus tard.");
-    } else {
+    } else if (status === 429) {
+      toast.error("Trop de requêtes. Patientez un instant.");
+    } else if (!isLoginRequest) {
       toast.error(message || "Une erreur est survenue.");
     }
 

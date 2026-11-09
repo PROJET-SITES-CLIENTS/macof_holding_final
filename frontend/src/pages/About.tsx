@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatedPage } from '../components/layout/AnimatedPage';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Target, Compass, Award, Lightbulb, Shield, HeartHandshake, Leaf, Users, ChevronRight } from 'lucide-react';
@@ -117,8 +116,7 @@ export default function About() {
   }, []);
 
   return (
-    <AnimatedPage className="bg-white">
-      <div ref={containerRef}>
+    <div ref={containerRef} className="bg-white">
         
         {/* SECTION 1: HERO NARRATIF */}
         <section className="about-hero relative min-h-[70vh] flex items-center justify-center overflow-hidden bg-black">
@@ -244,6 +242,5 @@ export default function About() {
         </section>
 
       </div>
-    </AnimatedPage>
   );
 }

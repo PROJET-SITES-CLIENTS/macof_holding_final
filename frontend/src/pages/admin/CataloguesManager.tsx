@@ -13,6 +13,7 @@ import {
 import { api } from '../../lib/api';
 import { AdminPage } from '../../components/ui/AdminPage';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { getImageUrl } from '../../lib/utils';
 
 interface Catalogue {
   id: number;
@@ -250,7 +251,7 @@ export default function CataloguesManager() {
                       <div className="flex items-center justify-end gap-1">
                         {cat.file_path && (
                           <a
-                            href={cat.file_path}
+                            href={getImageUrl(cat.file_path)}
                             target="_blank"
                             rel="noopener noreferrer"
                             title="Télécharger le document"

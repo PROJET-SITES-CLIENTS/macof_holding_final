@@ -1,4 +1,3 @@
-import { AnimatedPage } from '../components/layout/AnimatedPage';
 import { ContactForm } from '../components/ContactForm';
 import { useSettings } from '../hooks/useSettings';
 import { MapPin, Phone, Mail, Clock, Building2, Globe2, MessageCircle } from 'lucide-react';
@@ -77,8 +76,8 @@ export default function Contact() {
   const horaires = c.horaires || FALLBACK.horaires;
 
   return (
-    <AnimatedPage className="bg-background min-h-screen">
-      
+    <div className="bg-background min-h-screen">
+
       {/* Hero Contact */}
       <section className="relative pt-32 pb-24 bg-[#0a0a0a] overflow-hidden">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2000&auto=format&fit=crop')] bg-cover opacity-[0.08] mix-blend-screen mask-image-gradient-l" />
@@ -236,6 +235,6 @@ export default function Contact() {
         </div>
       </section>
 
-    </AnimatedPage>
+    </div>
   );
 }

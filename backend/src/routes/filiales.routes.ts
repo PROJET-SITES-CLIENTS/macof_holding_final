@@ -4,14 +4,15 @@ import { db } from "../db/client";
 import { filiales } from "../db/schema";
 import { success, error } from "../utils/response";
 import { deleteFile, uploadFile } from "../services/upload";
-import { authMiddleware } from "../middleware/auth";
+import { authMiddleware, requireRole } from "../middleware/auth";
 
 const filialesRoutes = new Hono();
 
-// Authentification requise pour les ecritures, les GET restent publics pour le site vitrine
-filialesRoutes.on("POST", "*", authMiddleware);
-filialesRoutes.on("PUT", "*", authMiddleware);
-filialesRoutes.on("DELETE", "*", authMiddleware);
+// Ecritures réservées aux admins (cohérent avec /api/v1/admin/filiales),
+// les GET restent publics pour le site vitrine
+filialesRoutes.on("POST", "*", authMiddleware, requireRole("admin"));
+filialesRoutes.on("PUT", "*", authMiddleware, requireRole("admin"));
+filialesRoutes.on("DELETE", "*", authMiddleware, requireRole("admin"));
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",

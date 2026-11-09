@@ -1,10 +1,15 @@
 import 'regenerator-runtime/runtime'
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import './index.css'
 import App from './App.tsx'
+
+// Devtools chargés uniquement en développement (allège le bundle de production)
+const LazyReactQueryDevtools = lazy(async () => {
+  const { ReactQueryDevtools } = await import('@tanstack/react-query-devtools')
+  return { default: ReactQueryDevtools }
+})
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,7 +24,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
-      <ReactQueryDevtools initialIsOpen={false} />
+      {import.meta.env.DEV && (
+        <Suspense fallback={null}>
+          <LazyReactQueryDevtools initialIsOpen={false} />
+        </Suspense>
+      )}
     </QueryClientProvider>
   </StrictMode>,
 )

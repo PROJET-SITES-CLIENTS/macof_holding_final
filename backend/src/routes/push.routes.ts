@@ -4,6 +4,7 @@ import { eq, count, desc } from 'drizzle-orm';
 import { db } from '../db/client';
 import { notification_campaigns, push_subscriptions } from '../db/schema';
 import { authMiddleware, requireRole } from '../middleware/auth';
+import { rateLimit } from '../middleware/rateLimit';
 import { uploadFile } from '../services/upload';
 import {
   pushSubscriptionSchema,
@@ -42,23 +43,48 @@ pushRoutes.get('/vapid-key', (c) => {
   return success(c, { publicKey });
 });
 
+// Services push légitimes — empêche l'inscription d'URLs arbitraires
+// (anti-flood + anti-SSRF lors des envois de campagne)
+const ALLOWED_PUSH_HOSTS = [
+  'fcm.googleapis.com',
+  'fcm.googleapis.com.', // variante FQDN
+  'updates.push.services.mozilla.com',
+  'web.push.apple.com',
+];
+
+function isAllowedPushEndpoint(endpoint: string): boolean {
+  try {
+    const { hostname, protocol } = new URL(endpoint);
+    if (protocol !== 'https:') return false;
+    return ALLOWED_PUSH_HOSTS.includes(hostname) || ALLOWED_PUSH_HOSTS.includes(`${hostname}.`);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Enregistrement d'un abonnement push.
  * Idempotent : un re-abonnement met a jour les cles existantes.
  */
-pushRoutes.post('/subscribe', async (c) => {
-  let body: any;
-  try {
-    body = await c.req.json();
-  } catch {
-    return error(c, 'JSON invalide', 400);
-  }
+pushRoutes.post(
+  '/subscribe',
+  rateLimit({ key: 'push-sub', limit: 10, windowMs: 60 * 60 * 1000 }),
+  async (c) => {
+    let body: any;
+    try {
+      body = await c.req.json();
+    } catch {
+      return error(c, 'JSON invalide', 400);
+    }
 
-  body.user_agent = c.req.header('user-agent') || undefined;
-  const parsed = pushSubscriptionSchema.safeParse(body);
-  if (!parsed.success) return error(c, zodFirstMessage(parsed.error), 422);
+    body.user_agent = c.req.header('user-agent') || undefined;
+    const parsed = pushSubscriptionSchema.safeParse(body);
+    if (!parsed.success) return error(c, zodFirstMessage(parsed.error), 422);
 
-  const { endpoint, keys, user_agent } = parsed.data;
+    const { endpoint, keys, user_agent } = parsed.data;
+    if (!isAllowedPushEndpoint(endpoint)) {
+      return error(c, 'Endpoint push non autorise', 422);
+    }
 
   const existing = await db
     .select({ id: push_subscriptions.id })

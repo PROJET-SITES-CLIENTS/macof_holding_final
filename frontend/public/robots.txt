@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /promo
+
+Sitemap: https://macof-holding-frontend-gray.vercel.app/sitemap.xml

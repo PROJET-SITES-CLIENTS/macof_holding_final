@@ -14,13 +14,14 @@ import {
 
 type NewLigneCommande = Omit<LigneCommande, "id">;
 import { success, error } from "../utils/response";
-import { authMiddleware } from "../middleware/auth";
+import { authMiddleware, requireRole } from "../middleware/auth";
+import { rateLimit } from "../middleware/rateLimit";
 import { uploadFile } from "../services/upload";
 import { eventEmitter } from "../services/events";
 
 const restaurationRoutes = new Hono();
 export const adminRestaurationRoutes = new Hono();
-adminRestaurationRoutes.use("*", authMiddleware);
+adminRestaurationRoutes.use("*", authMiddleware, requireRole("admin", "gestionnaire"));
 
 adminRestaurationRoutes.get("/menu", async (c) => {
   const products = await db
@@ -134,11 +135,23 @@ adminRestaurationRoutes.get("/commandes", async (c) => {
   return success(c, ordersWithItems);
 });
 
+// Valeurs autorisées pour les statuts (cohérentes avec les enums PG)
+const STATUTS_COMMANDE = ["en_attente", "confirmee", "en_preparation", "en_livraison", "livree", "annulee"] as const;
+const STATUTS_PAIEMENT = ["a_payer", "en_attente", "partiel", "paye", "echec"] as const;
+
 adminRestaurationRoutes.put("/commandes/:id/statut", async (c) => {
-  const { statut } = await c.req.json();
+  let body: any;
+  try {
+    body = await c.req.json();
+  } catch {
+    return error(c, "JSON invalide", 400);
+  }
+  if (!STATUTS_COMMANDE.includes(body?.statut)) {
+    return error(c, "Statut invalide", 422);
+  }
   const [order] = await db
     .update(commandes)
-    .set({ statut, updated_at: new Date() })
+    .set({ statut: body.statut, updated_at: new Date() })
     .where(eq(commandes.id, Number(c.req.param("id"))))
     .returning();
   return order
@@ -147,10 +160,18 @@ adminRestaurationRoutes.put("/commandes/:id/statut", async (c) => {
 });
 
 adminRestaurationRoutes.put("/commandes/:id/paiement", async (c) => {
-  const { statut_paiement } = await c.req.json();
+  let body: any;
+  try {
+    body = await c.req.json();
+  } catch {
+    return error(c, "JSON invalide", 400);
+  }
+  if (!STATUTS_PAIEMENT.includes(body?.statut_paiement)) {
+    return error(c, "Statut de paiement invalide", 422);
+  }
   const [order] = await db
     .update(commandes)
-    .set({ statut_paiement, updated_at: new Date() })
+    .set({ statut_paiement: body.statut_paiement, updated_at: new Date() })
     .where(eq(commandes.id, Number(c.req.param("id"))))
     .returning();
   return order
@@ -158,7 +179,8 @@ adminRestaurationRoutes.put("/commandes/:id/paiement", async (c) => {
     : error(c, "Commande introuvable", 404);
 });
 
-adminRestaurationRoutes.delete("/commandes/:id", async (c) => {
+// Suppression définitive d'une commande : réservée aux admins
+adminRestaurationRoutes.delete("/commandes/:id", requireRole("admin"), async (c) => {
   const orderId = Number(c.req.param("id"));
   await db.delete(lignes_commandes).where(eq(lignes_commandes.commande_id, orderId));
   const [order] = await db.delete(commandes).where(eq(commandes.id, orderId)).returning();
@@ -434,7 +456,7 @@ restaurationRoutes.get("/menu", async (c) => {
   } catch (err: any) {
     return error(
       c,
-      `Erreur lors de la récupération du menu: ${err.message}`,
+      "Erreur lors de la récupération du menu",
       500,
     );
   }
@@ -472,7 +494,7 @@ restaurationRoutes.get("/menu/:id", async (c) => {
 /**
  * 🛒 Public Route: Post & Create Food Orders
  */
-restaurationRoutes.post("/commandes", async (c) => {
+restaurationRoutes.post("/commandes", rateLimit({ key: "cmd", limit: 10, windowMs: 10 * 60 * 1000 }), async (c) => {
   const body = await c.req
     .json<Partial<CreateCommandeBody>>()
     .catch(() => null);
@@ -636,7 +658,7 @@ restaurationRoutes.post("/commandes", async (c) => {
   } catch (err: any) {
     return error(
       c,
-      `Erreur lors de la création de la commande: ${err.message}`,
+      "Erreur lors de la création de la commande",
       500,
     );
   }
@@ -718,7 +740,7 @@ restaurationRoutes.get("/commandes/:reference/statut", async (c) => {
   } catch (err: any) {
     return error(
       c,
-      `Erreur lors de la vérification du statut: ${err.message}`,
+      "Erreur lors de la vérification du statut",
       500,
     );
   }
@@ -760,9 +782,8 @@ restaurationRoutes.post("/djomy-webhook", async (c) => {
       timingSafeEqual(signatureBuffer, expectedBuffer);
 
     if (!signatureValid) {
-      console.warn(
-        `Djomy webhook: Invalid signature. Expected ${expectedSignature}, got ${signatureHeader}`,
-      );
+      // Ne jamais logger les signatures (matériau de signature)
+      console.warn("Djomy webhook: Invalid signature");
       return error(c, "Invalid signature", 401);
     }
 
@@ -770,7 +791,7 @@ restaurationRoutes.post("/djomy-webhook", async (c) => {
     const { transactionId, status, merchantPaymentReference } = body;
 
     if (!transactionId || !status || !merchantPaymentReference) {
-      console.warn("Djomy webhook: Missing required fields", body);
+      console.warn("Djomy webhook: Missing required fields");
       return error(c, "Missing required fields", 400);
     }
 
@@ -799,6 +820,21 @@ restaurationRoutes.post("/djomy-webhook", async (c) => {
       return success(c, { acknowledged: true });
     }
 
+    // Si Djomy transmet un montant, on le confronte à l'acompte attendu :
+    // un SUCCESS pour un montant différent ne doit jamais marquer la commande payée.
+    const amount = Number(body.amount ?? body.montant ?? NaN);
+    if (
+      nouveauStatutPaiement === "paye" &&
+      Number.isFinite(amount) &&
+      amount > 0 &&
+      Math.abs(amount - order.acompte_gnf) > 1
+    ) {
+      console.warn(
+        `Djomy webhook: Amount mismatch for ${merchantPaymentReference} (reçu ${amount}, attendu ${order.acompte_gnf})`,
+      );
+      return error(c, "Amount mismatch", 400);
+    }
+
     // Only update if status changed
     if (nouveauStatutPaiement !== order.statut_paiement) {
       await db
@@ -819,8 +855,9 @@ restaurationRoutes.post("/djomy-webhook", async (c) => {
     return success(c, { acknowledged: true });
   } catch (err: any) {
     console.error("Djomy webhook error:", err);
-    // Always return 200 to prevent Djomy from retrying
-    return success(c, { acknowledged: true });
+    // Erreur interne inattendue : 500 pour que Djomy retente la livraison
+    // (les erreurs métier connues sont déjà retournées proprement plus haut)
+    return error(c, "Webhook error", 500);
   }
 });
 

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { AnimatedPage } from '../components/layout/AnimatedPage';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import gsap from 'gsap';
@@ -42,7 +41,7 @@ export default function Domaines() {
         if (res.data.success && res.data.data && res.data.data.length > 0) {
           const apiData = res.data.data;
           // Iterate over FALLBACK_DOMAINES to maintain strict 01-06 order
-          return FALLBACK_DOMAINES.map((fallback, index) => {
+          return FALLBACK_DOMAINES.map((fallback) => {
             // Try to find the matching API item by slug or title prefix
             const f = apiData.find((apiItem: any) => {
               const itemSlug = apiItem.slug?.toLowerCase().replace('macof-', '').replace('seba-', '');
@@ -99,8 +98,7 @@ export default function Domaines() {
   }, [domaines]);
 
   return (
-    <AnimatedPage className="bg-white">
-      <div ref={containerRef}>
+    <div ref={containerRef} className="bg-white">
         
         {/* Header Institutionnel */}
         <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden bg-gray-900">
@@ -139,7 +137,7 @@ export default function Domaines() {
                         src={domaine.img} 
                         alt={domaine.title} 
                         className="w-full h-full object-cover transform scale-100 group-hover:scale-110 transition-transform duration-[2s] ease-out" 
-                        onError={(e) => { e.currentTarget.src = domaine.fallbackImg || DEFAULT_FALLBACK_IMAGE; }}
+                        onError={(e) => { e.currentTarget.src = ('fallbackImg' in domaine ? domaine.fallbackImg : '') || DEFAULT_FALLBACK_IMAGE; }}
                       />
                     </div>
                   </div>
@@ -185,6 +183,5 @@ export default function Domaines() {
         </section>
 
       </div>
-    </AnimatedPage>
   );
 }

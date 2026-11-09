@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { getImageUrl, DEFAULT_FALLBACK_IMAGE } from '../lib/utils';
-import { AnimatedPage } from '../components/layout/AnimatedPage';
 
 interface Partenaire {
   nom: string;
@@ -28,8 +27,7 @@ export default function Partenaires() {
   });
 
   return (
-    <AnimatedPage className="bg-[#07111d] min-h-screen">
-      <main className="relative isolate overflow-hidden pt-32 pb-24">
+    <main className="relative isolate overflow-hidden bg-[#07111d] min-h-screen pt-32 pb-24">
         <div
           className="absolute inset-0 -z-20 bg-cover bg-center"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=2200&auto=format&fit=crop')" }}
@@ -117,6 +115,5 @@ export default function Partenaires() {
           </motion.div>
         </div>
       </main>
-    </AnimatedPage>
   );
 }

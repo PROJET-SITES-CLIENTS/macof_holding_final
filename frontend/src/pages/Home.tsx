@@ -3,7 +3,6 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Button } from '../components/ui/Button';
 import { Link } from 'react-router-dom';
-import { AnimatedPage } from '../components/layout/AnimatedPage';
 import { MessageCircle, CheckCircle, ChevronRight, ShieldCheck } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { mergeContent, getImageUrl, DEFAULT_FALLBACK_IMAGE } from '../lib/utils';
@@ -92,28 +91,9 @@ const MACOF_DATA: MacofData = {
     { title: "Gestion de Biens", category: "Immobilier", image: "https://media.istockphoto.com/id/1572514012/photo/african-couple-viewing-real-estate-house.webp?a=1&b=1&s=612x612&w=0&k=20&c=_D-nrY18IaQCjce0jJGeONSqbuQ-6iCQM8X4qlnxw0g=" }
   ],
 
-  partenaires: [
-    { nom: "Partner 1", logo_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/368px-Google_2015_logo.svg.png" },
-    { nom: "Partner 2", logo_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/439px-Microsoft_logo.svg.png" },
-    { nom: "Partner 3", logo_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/600px-Amazon_logo.svg.png" }
-  ],
-  
-  temoignages: [
-    { 
-      nom: "Jean-Pierre Duparc", 
-      poste: "Directeur des Opérations", 
-      entreprise: "Groupe Bolloré", 
-      message: "L'expertise de MACOF dans la gestion logistique et le transit a radicalement amélioré nos délais de livraison. Un partenaire de confiance absolu.",
-      avatar_url: "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?q=80&w=200&auto=format&fit=crop"
-    },
-    { 
-      nom: "Aminata Diallo", 
-      poste: "CEO", 
-      entreprise: "Global Trade Africa", 
-      message: "Nous collaborons avec MACOF Immobilier depuis 3 ans sur des projets d'envergure. Leur rigueur et leur respect des normes internationales sont exemplaires.",
-      avatar_url: "https://images.unsplash.com/photo-1531123414708-f47c4ce6d654?q=80&w=200&auto=format&fit=crop"
-    }
-  ]
+  partenaires: [],
+
+  temoignages: []
 };
 
 export default function Home() {
@@ -281,8 +261,7 @@ export default function Home() {
   }, [content, filiales]);
 
   return (
-    <AnimatedPage className="bg-background">
-      <div ref={mainRef}>
+    <div ref={mainRef} className="bg-background">
         {/* SECTION 1: HERO PREMIUM */}
         <section ref={heroRef} className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-black">
           <div className="absolute inset-0 z-0">
@@ -460,20 +439,21 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SECTION PARTENAIRES */}
+        {/* SECTION PARTENAIRES (masquée si aucun partenaire publié) */}
+        {(content.partenaires || []).length > 0 && (
         <section className="py-24 bg-gray-50 border-t border-gray-200 overflow-hidden">
           <div className="max-w-7xl mx-auto px-6 lg:px-12 mb-12 text-center reveal-up">
             <h2 className="text-sm font-sans tracking-[0.3em] text-red-600 uppercase mb-4 font-semibold">Nos Partenaires</h2>
             <h3 className="text-3xl md:text-4xl font-serif text-gray-900">Ils nous font <span className="italic text-gray-500">confiance</span></h3>
           </div>
-          
+
           <div className="relative flex overflow-hidden group">
             <div className="animate-marquee flex gap-16 items-center min-w-full">
               {(content.partenaires || []).map((p, i) => (
                 <div key={i} className="flex-shrink-0 flex flex-col items-center justify-center gap-4">
-                  <img 
-                    src={getImageUrl(p.logo_url)} 
-                    alt={p.nom} 
+                  <img
+                    src={getImageUrl(p.logo_url)}
+                    alt={p.nom}
                     className="h-16 w-auto object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
@@ -482,9 +462,9 @@ export default function Home() {
               {/* Duplication pour le défilement infini */}
               {(content.partenaires || []).map((p, i) => (
                 <div key={`dup-${i}`} className="flex-shrink-0 flex flex-col items-center justify-center gap-4">
-                  <img 
-                    src={getImageUrl(p.logo_url)} 
-                    alt={p.nom} 
+                  <img
+                    src={getImageUrl(p.logo_url)}
+                    alt={p.nom}
                     className="h-16 w-auto object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
@@ -493,8 +473,10 @@ export default function Home() {
             </div>
           </div>
         </section>
+        )}
 
-        {/* SECTION TÉMOIGNAGES */}
+        {/* SECTION TÉMOIGNAGES (masquée si aucun témoignage actif) */}
+        {(content.temoignages || []).some((t) => t.active !== false) && (
         <section className="py-24 bg-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-1/3 h-full bg-slate-50 -skew-x-12 translate-x-20 z-0 hidden lg:block" />
           <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
@@ -533,8 +515,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+        )}
 
-        {/* SECTION CTA FINAL */}
+      {/* SECTION CTA FINAL */}
         <section className="py-32 bg-red-600 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('https://media.istockphoto.com/id/1179885419/photo/four-confident-african-american-male-and-female-professionals-standing-together-in-bright.jpg?s=612x612&w=0&k=20&c=MFHVh3PYGxbqyRC02_ECSwX7ABfMA4ptgGw_eJ7V3w8=')] mix-blend-multiply opacity-20 object-cover" />
           <div className="relative z-10 max-w-4xl mx-auto px-6">
@@ -547,7 +530,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-      </div>
-    </AnimatedPage>
+    </div>
   );
 }

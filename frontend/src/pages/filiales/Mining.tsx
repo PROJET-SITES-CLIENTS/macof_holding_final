@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState , useMemo } from 'react';
-import { AnimatedPage } from '../../components/layout/AnimatedPage';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { mergeContent, getImageUrl, DEFAULT_FALLBACK_IMAGE } from '../../lib/utils';
@@ -38,7 +37,13 @@ const fallbackServices = [
 export default function Mining() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [formStatus, setFormStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [formData, setFormData] = useState({ nom_complet: '', email: '', telephone: '', objet: '', message: '' });
+  const [formData, setFormData] = useState({
+    nom_complet: '', // Société / Entreprise
+    email: '', // Email pro
+    nature_besoin: "Sous-traitance d'exploitation", // Nature du besoin
+    localisation: '', // Localisation (site)
+    message: '', // Détails
+  });
   const [reference, setReference] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
 
@@ -56,7 +61,7 @@ export default function Mining() {
     
   });
 
-  const { data: content, isLoading: loading } = useQuery({
+  const { data: content } = useQuery({
     queryKey: ['pageContent', SLUG],
     queryFn: async () => {
       try {
@@ -84,13 +89,22 @@ export default function Mining() {
     e.preventDefault();
     setFormStatus('loading');
     try {
-      const response = await api.post('/demandes', { ...formData, filiale: 'MACOF Mining', type_demande: 'devis' });
+      const objet = [formData.nature_besoin, formData.localisation].filter(Boolean).join(' | ');
+      const response = await api.post('/demandes', {
+        nom_complet: formData.nom_complet,
+        email: formData.email,
+        telephone: '',
+        objet,
+        message: formData.message,
+        filiale: 'MACOF Mining',
+        type_demande: 'devis',
+      });
       if (response.data.success) {
         setReference(response.data.data?.reference || '');
         setWhatsappUrl(response.data.data?.whatsapp_url || '');
       }
       setFormStatus('success');
-      setFormData({ nom_complet: '', email: '', telephone: '', objet: '', message: '' });
+      setFormData({ nom_complet: '', email: '', nature_besoin: "Sous-traitance d'exploitation", localisation: '', message: '' });
     } catch (err) {
       console.error('Erreur formulaire:', err);
       setFormStatus('error');
@@ -126,8 +140,7 @@ export default function Mining() {
   }, []);
 
   return (
-    <AnimatedPage className="bg-[#111111]">
-      <div ref={containerRef} className="text-gray-300 font-sans">
+    <div ref={containerRef} className="text-gray-300 font-sans bg-[#111111]">
         
         {/* Hero Industriel */}
         <section className="hero-section relative h-screen flex items-center justify-center overflow-hidden bg-black">
@@ -370,18 +383,18 @@ export default function Mining() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Société / Entreprise</label>
-                        <Input required placeholder="Nom de l'entreprise" className="border-white/10 bg-[#111111] text-white focus:border-[#C4A47C] rounded-none" />
+                        <Input required placeholder="Nom de l'entreprise" value={formData.nom_complet} onChange={(e) => setFormData({ ...formData, nom_complet: e.target.value })} className="border-white/10 bg-[#111111] text-white focus:border-[#C4A47C] rounded-none" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Email pro</label>
-                        <Input required type="email" placeholder="contact@..." className="border-white/10 bg-[#111111] text-white focus:border-[#C4A47C] rounded-none" />
+                        <Input required type="email" placeholder="contact@..." value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="border-white/10 bg-[#111111] text-white focus:border-[#C4A47C] rounded-none" />
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Nature du Besoin</label>
-                        <select className="flex h-10 w-full border border-white/10 bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C4A47C] rounded-none">
+                        <select value={formData.nature_besoin} onChange={(e) => setFormData({ ...formData, nature_besoin: e.target.value })} className="flex h-10 w-full border border-white/10 bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C4A47C] rounded-none">
                           <option>Sous-traitance d'exploitation</option>
                           <option>Location d'engins (Terrassement)</option>
                           <option>Transport & Logistique Minière</option>
@@ -390,7 +403,7 @@ export default function Mining() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-400 font-semibold">Localisation (Site)</label>
-                        <Input required placeholder="Région, Préfecture..." className="border-white/10 bg-[#111111] text-white focus:border-[#C4A47C] rounded-none" />
+                        <Input required placeholder="Région, Préfecture..." value={formData.localisation} onChange={(e) => setFormData({ ...formData, localisation: e.target.value })} className="border-white/10 bg-[#111111] text-white focus:border-[#C4A47C] rounded-none" />
                       </div>
                     </div>
 
@@ -399,6 +412,8 @@ export default function Mining() {
                       <textarea
                         required
                         rows={4}
+                        value={formData.message}
+                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         className="flex w-full border border-white/10 bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C4A47C] rounded-none"
                         placeholder="Précisez vos besoins techniques..."
                       />
@@ -414,8 +429,7 @@ export default function Mining() {
           </div>
         </section>
 
-      </div>
-    </AnimatedPage>
+    </div>
   );
 }
 

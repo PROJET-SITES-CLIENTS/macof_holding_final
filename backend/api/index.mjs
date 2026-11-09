@@ -75995,7 +75995,7 @@ function isZodError(err) {
 }
 
 // src/middleware/bodyLimit.ts
-var MAX_BODY_SIZE_BYTES = 12 * 1024 * 1024;
+var MAX_BODY_SIZE_BYTES = 30 * 1024 * 1024;
 var bodyLimitMiddleware = async (c, next) => {
   const contentLength = c.req.header("content-length");
   if (contentLength) {
@@ -99162,6 +99162,38 @@ var auth_routes_default = authRoutes;
 init_drizzle_orm();
 init_schema2();
 
+// src/middleware/rateLimit.ts
+var buckets = /* @__PURE__ */ new Map();
+var MAX_BUCKETS = 5e4;
+function clientIp(c) {
+  const forwarded = c.req.header("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0].trim();
+    if (first) return first;
+  }
+  return c.req.header("x-real-ip") || "unknown";
+}
+function rateLimit(options) {
+  const { key, limit, windowMs } = options;
+  return async (c, next) => {
+    const bucketKey = `${key}:${clientIp(c)}`;
+    const now = Date.now();
+    let bucket = buckets.get(bucketKey);
+    if (!bucket || bucket.resetAt <= now) {
+      bucket = { count: 0, resetAt: now + windowMs };
+      if (buckets.size > MAX_BUCKETS) buckets.clear();
+      buckets.set(bucketKey, bucket);
+    }
+    bucket.count += 1;
+    if (bucket.count > limit) {
+      const retryAfterSec = Math.max(1, Math.ceil((bucket.resetAt - now) / 1e3));
+      c.header("Retry-After", String(retryAfterSec));
+      return error(c, "Trop de requetes, reessayez plus tard", 429);
+    }
+    await next();
+  };
+}
+
 // src/services/email.ts
 var import_nodemailer = __toESM(require_nodemailer(), 1);
 init_drizzle_orm();
@@ -99384,7 +99416,7 @@ function generateReference() {
   const random = Math.random().toString(36).substring(2, 6).toUpperCase().padStart(4, "X");
   return `DM-${year2}${month}${day2}-${random}`;
 }
-contactRoutes.post("/", async (c) => {
+contactRoutes.post("/", rateLimit({ key: "demande", limit: 5, windowMs: 10 * 60 * 1e3 }), async (c) => {
   const body = await parseBody2(c);
   if (!body) {
     return error(c, "Donn\xE9es de formulaire invalides ou illisibles", 400);
@@ -99561,6 +99593,8 @@ async function deleteFile(url2) {
 }
 
 // src/middleware/auth.ts
+init_drizzle_orm();
+init_schema2();
 var authMiddleware = async (c, next) => {
   const authHeader = c.req.header("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -99569,7 +99603,14 @@ var authMiddleware = async (c, next) => {
   const token = authHeader.substring(7);
   try {
     const payload = await verifyToken(token);
-    c.set("user", payload);
+    const [account] = await db.select({ id: administrateurs.id, role: administrateurs.role, archived: administrateurs.archived }).from(administrateurs).where(eq(administrateurs.id, payload.sub)).limit(1);
+    if (!account) {
+      return error(c, "Compte introuvable", 401);
+    }
+    if (account.archived) {
+      return error(c, "Compte archive", 401);
+    }
+    c.set("user", { ...payload, role: account.role });
   } catch (err) {
     const message2 = err instanceof Error ? err.message : "Token invalide ou expire";
     return error(c, message2, 401);
@@ -99588,9 +99629,9 @@ var requireRole = (...roles) => {
 
 // src/routes/filiales.routes.ts
 var filialesRoutes = new Hono2();
-filialesRoutes.on("POST", "*", authMiddleware);
-filialesRoutes.on("PUT", "*", authMiddleware);
-filialesRoutes.on("DELETE", "*", authMiddleware);
+filialesRoutes.on("POST", "*", authMiddleware, requireRole("admin"));
+filialesRoutes.on("PUT", "*", authMiddleware, requireRole("admin"));
+filialesRoutes.on("DELETE", "*", authMiddleware, requireRole("admin"));
 var ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -99926,7 +99967,7 @@ var catalogues_routes_default = cataloguesRoutes;
 init_drizzle_orm();
 init_schema2();
 var pagesRoutes = new Hono2();
-pagesRoutes.on("POST", "*", authMiddleware);
+pagesRoutes.on("POST", "*", authMiddleware, requireRole("admin", "gestionnaire"));
 var ALLOWED_IMAGE_TYPES2 = [
   "image/jpeg",
   "image/png",
@@ -100026,8 +100067,8 @@ var pages_routes_default = pagesRoutes;
 init_drizzle_orm();
 init_schema2();
 var settingsRoutes = new Hono2();
-settingsRoutes.on("POST", "*", authMiddleware);
-settingsRoutes.on("PUT", "*", authMiddleware);
+settingsRoutes.on("POST", "*", authMiddleware, requireRole("admin"));
+settingsRoutes.on("PUT", "*", authMiddleware, requireRole("admin"));
 var PUBLIC_KEYS = [
   "contact_email",
   "contact_phone",
@@ -100416,13 +100457,15 @@ async function safeCountCommandesNouvelles() {
   }
 }
 adminDashboard.get("/", async (c) => {
-  const [demandes, filialesCount, galerieCount, cataloguesCount, nouvellesDemandes, nouvellesCommandes] = await Promise.all([
+  const [demandes, filialesCount, galerieCount, cataloguesCount, nouvellesDemandes, nouvellesCommandes, demandesTraitees] = await Promise.all([
     safeCount(demandes_contact, "demandes_contact"),
     safeCountFiliales(),
     safeCount(galerie, "galerie"),
     safeCount(catalogues, "catalogues"),
     safeCountWhere(demandes_contact, "demandes nouvelles", eq(demandes_contact.statut, "nouveau")),
-    safeCountCommandesNouvelles()
+    safeCountCommandesNouvelles(),
+    // KPI calculé sur l'intégralité de la table (le front est plafonné à 100 lignes)
+    safeCountWhere(demandes_contact, "demandes traitees", eq(demandes_contact.statut, "traite"))
   ]);
   return success3(c, {
     demandes,
@@ -100431,7 +100474,8 @@ adminDashboard.get("/", async (c) => {
     galerie: galerieCount,
     catalogues: cataloguesCount,
     nouvelles_demandes: nouvellesDemandes,
-    nouvelles_commandes: nouvellesCommandes
+    nouvelles_commandes: nouvellesCommandes,
+    total_traitees: demandesTraitees
   });
 });
 var adminDemandes = new Hono2();
@@ -100907,7 +100951,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 init_schema2();
 var restaurationRoutes = new Hono2();
 var adminRestaurationRoutes = new Hono2();
-adminRestaurationRoutes.use("*", authMiddleware);
+adminRestaurationRoutes.use("*", authMiddleware, requireRole("admin", "gestionnaire"));
 adminRestaurationRoutes.get("/menu", async (c) => {
   const products = await db.select().from(produits_menu).orderBy(desc(produits_menu.created_at));
   return success(c, products);
@@ -100984,17 +101028,35 @@ adminRestaurationRoutes.get("/commandes", async (c) => {
   }));
   return success(c, ordersWithItems);
 });
+var STATUTS_COMMANDE = ["en_attente", "confirmee", "en_preparation", "en_livraison", "livree", "annulee"];
+var STATUTS_PAIEMENT = ["a_payer", "en_attente", "partiel", "paye", "echec"];
 adminRestaurationRoutes.put("/commandes/:id/statut", async (c) => {
-  const { statut } = await c.req.json();
-  const [order] = await db.update(commandes).set({ statut, updated_at: /* @__PURE__ */ new Date() }).where(eq(commandes.id, Number(c.req.param("id")))).returning();
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return error(c, "JSON invalide", 400);
+  }
+  if (!STATUTS_COMMANDE.includes(body?.statut)) {
+    return error(c, "Statut invalide", 422);
+  }
+  const [order] = await db.update(commandes).set({ statut: body.statut, updated_at: /* @__PURE__ */ new Date() }).where(eq(commandes.id, Number(c.req.param("id")))).returning();
   return order ? success(c, order, "Statut mis \xE0 jour") : error(c, "Commande introuvable", 404);
 });
 adminRestaurationRoutes.put("/commandes/:id/paiement", async (c) => {
-  const { statut_paiement } = await c.req.json();
-  const [order] = await db.update(commandes).set({ statut_paiement, updated_at: /* @__PURE__ */ new Date() }).where(eq(commandes.id, Number(c.req.param("id")))).returning();
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return error(c, "JSON invalide", 400);
+  }
+  if (!STATUTS_PAIEMENT.includes(body?.statut_paiement)) {
+    return error(c, "Statut de paiement invalide", 422);
+  }
+  const [order] = await db.update(commandes).set({ statut_paiement: body.statut_paiement, updated_at: /* @__PURE__ */ new Date() }).where(eq(commandes.id, Number(c.req.param("id")))).returning();
   return order ? success(c, order, "Paiement mis \xE0 jour") : error(c, "Commande introuvable", 404);
 });
-adminRestaurationRoutes.delete("/commandes/:id", async (c) => {
+adminRestaurationRoutes.delete("/commandes/:id", requireRole("admin"), async (c) => {
   const orderId = Number(c.req.param("id"));
   await db.delete(lignes_commandes).where(eq(lignes_commandes.commande_id, orderId));
   const [order] = await db.delete(commandes).where(eq(commandes.id, orderId)).returning();
@@ -101139,7 +101201,7 @@ restaurationRoutes.get("/menu", async (c) => {
   } catch (err) {
     return error(
       c,
-      `Erreur lors de la r\xE9cup\xE9ration du menu: ${err.message}`,
+      "Erreur lors de la r\xE9cup\xE9ration du menu",
       500
     );
   }
@@ -101169,7 +101231,7 @@ restaurationRoutes.get("/menu/:id", async (c) => {
     return error(c, `Erreur produit: ${err.message}`, 500);
   }
 });
-restaurationRoutes.post("/commandes", async (c) => {
+restaurationRoutes.post("/commandes", rateLimit({ key: "cmd", limit: 10, windowMs: 10 * 60 * 1e3 }), async (c) => {
   const body = await c.req.json().catch(() => null);
   if (!body?.nom_client || !body?.telephone || !body?.adresse_livraison || !body?.quartier || !body?.ville || !Array.isArray(body.items) || !body.items.length) {
     return error(c, "Informations client et panier obligatoires.", 422);
@@ -101279,7 +101341,7 @@ restaurationRoutes.post("/commandes", async (c) => {
   } catch (err) {
     return error(
       c,
-      `Erreur lors de la cr\xE9ation de la commande: ${err.message}`,
+      "Erreur lors de la cr\xE9ation de la commande",
       500
     );
   }
@@ -101336,7 +101398,7 @@ restaurationRoutes.get("/commandes/:reference/statut", async (c) => {
   } catch (err) {
     return error(
       c,
-      `Erreur lors de la v\xE9rification du statut: ${err.message}`,
+      "Erreur lors de la v\xE9rification du statut",
       500
     );
   }
@@ -101360,14 +101422,12 @@ restaurationRoutes.post("/djomy-webhook", async (c) => {
     const expectedBuffer = Buffer.from(expectedSignature, "utf8");
     const signatureValid = signatureBuffer.length === expectedBuffer.length && timingSafeEqual(signatureBuffer, expectedBuffer);
     if (!signatureValid) {
-      console.warn(
-        `Djomy webhook: Invalid signature. Expected ${expectedSignature}, got ${signatureHeader}`
-      );
+      console.warn("Djomy webhook: Invalid signature");
       return error(c, "Invalid signature", 401);
     }
     const { transactionId, status, merchantPaymentReference } = body;
     if (!transactionId || !status || !merchantPaymentReference) {
-      console.warn("Djomy webhook: Missing required fields", body);
+      console.warn("Djomy webhook: Missing required fields");
       return error(c, "Missing required fields", 400);
     }
     let nouveauStatutPaiement = "en_attente";
@@ -101385,6 +101445,13 @@ restaurationRoutes.post("/djomy-webhook", async (c) => {
       );
       return success(c, { acknowledged: true });
     }
+    const amount = Number(body.amount ?? body.montant ?? NaN);
+    if (nouveauStatutPaiement === "paye" && Number.isFinite(amount) && amount > 0 && Math.abs(amount - order.acompte_gnf) > 1) {
+      console.warn(
+        `Djomy webhook: Amount mismatch for ${merchantPaymentReference} (re\xE7u ${amount}, attendu ${order.acompte_gnf})`
+      );
+      return error(c, "Amount mismatch", 400);
+    }
     if (nouveauStatutPaiement !== order.statut_paiement) {
       await db.update(commandes).set({
         statut_paiement: nouveauStatutPaiement,
@@ -101398,7 +101465,7 @@ restaurationRoutes.post("/djomy-webhook", async (c) => {
     return success(c, { acknowledged: true });
   } catch (err) {
     console.error("Djomy webhook error:", err);
-    return success(c, { acknowledged: true });
+    return error(c, "Webhook error", 500);
   }
 });
 var restauration_routes_default = restaurationRoutes;
@@ -101641,7 +101708,7 @@ var chatbotTools = [
 
 // src/services/chatbot.service.ts
 var GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-var STATUTS_COMMANDE = ["en_attente", "confirmee", "en_preparation", "en_livraison", "livree", "annulee"];
+var STATUTS_COMMANDE2 = ["en_attente", "confirmee", "en_preparation", "en_livraison", "livree", "annulee"];
 var STATUTS_DEMANDE = ["nouveau", "en_cours", "traite", "archive"];
 var STATUTS_FILIALE = ["actif", "inactif"];
 function isValidPrice(value) {
@@ -101716,7 +101783,7 @@ async function handleVoiceCommand(sessionId, transcript) {
         );
       } else if (resolvedName === "modifier_statut_commande") {
         const referenceCommande = typeof actionArgs.reference_commande === "string" ? actionArgs.reference_commande : "";
-        if (!isAllowedStatus(actionArgs.statut, STATUTS_COMMANDE)) {
+        if (!isAllowedStatus(actionArgs.statut, STATUTS_COMMANDE2)) {
           actionResult = { success: false, message: "Statut invalide" };
         } else {
           actionResult = await modifierStatutCommandeParRef(
@@ -101809,7 +101876,7 @@ adminChatbotRoutes.post("/voice", async (c) => {
     return success(c, result, "Commande vocale trait\xE9e avec succ\xE8s");
   } catch (err) {
     console.error("Erreur commande vocale :", err);
-    return error(c, err.message || "Erreur interne", 500);
+    return error(c, "Erreur lors du traitement de la commande vocale", 500);
   }
 });
 
@@ -102873,30 +102940,53 @@ pushRoutes.get("/vapid-key", (c) => {
   if (!publicKey) return error53(c, "Notifications push non configurees", 503);
   return success4(c, { publicKey });
 });
-pushRoutes.post("/subscribe", async (c) => {
-  let body;
+var ALLOWED_PUSH_HOSTS = [
+  "fcm.googleapis.com",
+  "fcm.googleapis.com.",
+  // variante FQDN
+  "updates.push.services.mozilla.com",
+  "web.push.apple.com"
+];
+function isAllowedPushEndpoint(endpoint) {
   try {
-    body = await c.req.json();
+    const { hostname: hostname3, protocol } = new URL(endpoint);
+    if (protocol !== "https:") return false;
+    return ALLOWED_PUSH_HOSTS.includes(hostname3) || ALLOWED_PUSH_HOSTS.includes(`${hostname3}.`);
   } catch {
-    return error53(c, "JSON invalide", 400);
+    return false;
   }
-  body.user_agent = c.req.header("user-agent") || void 0;
-  const parsed = pushSubscriptionSchema.safeParse(body);
-  if (!parsed.success) return error53(c, zodFirstMessage2(parsed.error), 422);
-  const { endpoint, keys, user_agent } = parsed.data;
-  const existing = await db.select({ id: push_subscriptions.id }).from(push_subscriptions).where(eq(push_subscriptions.endpoint, endpoint)).limit(1);
-  if (existing.length > 0) {
-    await db.update(push_subscriptions).set({ p256dh: keys.p256dh, auth: keys.auth, user_agent: user_agent ?? null }).where(eq(push_subscriptions.endpoint, endpoint));
-  } else {
-    await db.insert(push_subscriptions).values({
-      endpoint,
-      p256dh: keys.p256dh,
-      auth: keys.auth,
-      user_agent: user_agent ?? null
-    });
+}
+pushRoutes.post(
+  "/subscribe",
+  rateLimit({ key: "push-sub", limit: 10, windowMs: 60 * 60 * 1e3 }),
+  async (c) => {
+    let body;
+    try {
+      body = await c.req.json();
+    } catch {
+      return error53(c, "JSON invalide", 400);
+    }
+    body.user_agent = c.req.header("user-agent") || void 0;
+    const parsed = pushSubscriptionSchema.safeParse(body);
+    if (!parsed.success) return error53(c, zodFirstMessage2(parsed.error), 422);
+    const { endpoint, keys, user_agent } = parsed.data;
+    if (!isAllowedPushEndpoint(endpoint)) {
+      return error53(c, "Endpoint push non autorise", 422);
+    }
+    const existing = await db.select({ id: push_subscriptions.id }).from(push_subscriptions).where(eq(push_subscriptions.endpoint, endpoint)).limit(1);
+    if (existing.length > 0) {
+      await db.update(push_subscriptions).set({ p256dh: keys.p256dh, auth: keys.auth, user_agent: user_agent ?? null }).where(eq(push_subscriptions.endpoint, endpoint));
+    } else {
+      await db.insert(push_subscriptions).values({
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        user_agent: user_agent ?? null
+      });
+    }
+    return success4(c, null, "Abonnement enregistre", 201);
   }
-  return success4(c, null, "Abonnement enregistre", 201);
-});
+);
 pushRoutes.post("/unsubscribe", async (c) => {
   let body;
   try {
@@ -103026,7 +103116,9 @@ adminNotifications.delete("/:id", async (c) => {
 // src/index.ts
 var app = new Hono2();
 app.use("*", async (c, next) => {
-  console.log(`[REQ] ${c.req.method} ${c.req.url}`);
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[REQ] ${c.req.method} ${c.req.url}`);
+  }
   await next();
 });
 app.use("*", corsMiddleware());

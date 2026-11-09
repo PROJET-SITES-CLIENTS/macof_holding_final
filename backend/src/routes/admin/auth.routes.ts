@@ -86,13 +86,15 @@ async function safeCountCommandesNouvelles() {
 }
 
 adminDashboard.get("/", async (c) => {
-  const [demandes, filialesCount, galerieCount, cataloguesCount, nouvellesDemandes, nouvellesCommandes] = await Promise.all([
+  const [demandes, filialesCount, galerieCount, cataloguesCount, nouvellesDemandes, nouvellesCommandes, demandesTraitees] = await Promise.all([
     safeCount(demandes_contact, "demandes_contact"),
     safeCountFiliales(),
     safeCount(galerie, "galerie"),
     safeCount(catalogues, "catalogues"),
     safeCountWhere(demandes_contact, "demandes nouvelles", eq(demandes_contact.statut, "nouveau")),
     safeCountCommandesNouvelles(),
+    // KPI calculé sur l'intégralité de la table (le front est plafonné à 100 lignes)
+    safeCountWhere(demandes_contact, "demandes traitees", eq(demandes_contact.statut, "traite")),
   ]);
 
   return success(c, {
@@ -103,6 +105,7 @@ adminDashboard.get("/", async (c) => {
     catalogues: cataloguesCount,
     nouvelles_demandes: nouvellesDemandes,
     nouvelles_commandes: nouvellesCommandes,
+    total_traitees: demandesTraitees,
   });
 });
 

@@ -9,11 +9,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', ...props }, ref) => {
     const variants = {
-      // --- Variantes site public (inchangées) ---
-      default: 'bg-foreground text-background hover:bg-foreground/90',
-      outline: 'border border-black/20 text-foreground hover:border-primary hover:text-primary',
-      ghost: 'hover:bg-black/5 hover:text-primary',
-      luxury: 'bg-primary text-primary-foreground uppercase tracking-[0.2em] font-medium shadow-[0_0_20px_rgba(0,85,164,0.15)] hover:shadow-[0_0_30px_rgba(0,85,164,0.3)] hover:bg-blue-800',
+      // --- Variantes site public (inchangées, + ring focus or) ---
+      default:
+        'bg-foreground text-background hover:bg-foreground/90 focus-visible:ring-2 focus-visible:ring-[#cda434]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1220]',
+      outline:
+        'border border-black/20 text-foreground hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-[#cda434]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1220]',
+      ghost:
+        'hover:bg-black/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-[#cda434]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1220]',
+      luxury:
+        'bg-primary text-primary-foreground uppercase tracking-[0.2em] font-medium shadow-[0_0_20px_rgba(0,85,164,0.15)] hover:shadow-[0_0_30px_rgba(0,85,164,0.3)] hover:bg-blue-800 focus-visible:ring-2 focus-visible:ring-[#cda434]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1220]',
       // --- Variantes admin premium (or MACOF) ---
       primary:
         'rounded-xl bg-gradient-to-r from-[#cda434] to-[#e0b83d] text-[#1a1405] font-semibold shadow-[0_8px_24px_-8px_rgba(205,164,52,0.55)] hover:shadow-[0_10px_28px_-6px_rgba(205,164,52,0.65)] hover:brightness-105 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#cda434]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1220]',

@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '../../lib/api';
 import { AdminPage } from '../../components/ui/AdminPage';
 
@@ -24,10 +25,12 @@ interface FilialeApiData {
   id: number;
   nom: string;
   slug?: string;
-  stat_1_value?: string;
-  stat_1_label?: string;
-  stat_2_value?: string;
-  stat_2_label?: string;
+}
+
+interface PageContentRow {
+  page_slug: string;
+  section_key: string;
+  content_value?: string | null;
 }
 
 interface FilialeStats {
@@ -46,6 +49,27 @@ const inputClass =
   'w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-[#cda434]/50 focus:ring-2 focus:ring-[#cda434]/20 transition-all';
 
 const labelClass = 'text-xs font-medium uppercase tracking-wider text-slate-500 mb-2 block';
+
+// ─── Slug helper (identique à FilialesManager) ────────────────────────────────
+
+function generateSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[\s\W-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Indexe les page_contents par slug puis par section : statsMap[slug][section_key]
+function buildStatsMap(rows: PageContentRow[]): Map<string, Record<string, string>> {
+  const map = new Map<string, Record<string, string>>();
+  rows.forEach((row) => {
+    const bucket = map.get(row.page_slug) || {};
+    bucket[row.section_key] = row.content_value ?? '';
+    map.set(row.page_slug, bucket);
+  });
+  return map;
+}
 
 // ─── StatRow component ────────────────────────────────────────────────────────
 
@@ -135,23 +159,38 @@ export default function StatsManager() {
         ]);
       }
 
-      // Fetch filiales
-      const filialesRes = await api.get('/api/v1/admin/filiales');
+      // Fetch filiales + toutes les page_contents (source de vérité des stats filiales)
+      const [filialesRes, pagesRes] = await Promise.all([
+        api.get('/api/v1/admin/filiales'),
+        api.get('/api/v1/admin/pages').catch(() => null),
+      ]);
+
+      const rows: PageContentRow[] = pagesRes?.data?.success && Array.isArray(pagesRes.data.data)
+        ? pagesRes.data.data
+        : [];
+      const statsMap = buildStatsMap(rows);
+
       if (filialesRes.data?.success) {
         const raw: FilialeApiData[] = Array.isArray(filialesRes.data.data)
           ? filialesRes.data.data
           : filialesRes.data.data?.items || [];
 
         setFiliales(
-          raw.map((f) => ({
-            id: f.id,
-            nom: f.nom,
-            slug: f.slug || '',
-            stat_1_value: f.stat_1_value || '',
-            stat_1_label: f.stat_1_label || '',
-            stat_2_value: f.stat_2_value || '',
-            stat_2_label: f.stat_2_label || '',
-          }))
+          raw.map((f) => {
+            // Les stats sont stockées dans page_contents (page_slug = slug de la filiale),
+            // pas sur la table filiales : on pré-remplit depuis cette source de vérité.
+            const slug = f.slug || generateSlug(f.nom);
+            const saved = statsMap.get(slug);
+            return {
+              id: f.id,
+              nom: f.nom,
+              slug,
+              stat_1_value: saved?.stat_1_value || '',
+              stat_1_label: saved?.stat_1_label || '',
+              stat_2_value: saved?.stat_2_value || '',
+              stat_2_label: saved?.stat_2_label || '',
+            };
+          })
         );
       }
     } catch (err) {
@@ -190,7 +229,7 @@ export default function StatsManager() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error('Erreur save stats:', err);
-      alert('Erreur lors de la sauvegarde.');
+      toast.error('Erreur lors de la sauvegarde.');
     } finally {
       setSavingId(null);
     }
@@ -206,7 +245,7 @@ export default function StatsManager() {
     setSavingId(filiale.id);
     try {
       await api.post('/api/v1/admin/pages/bulk', {
-        page_slug: filiale.slug || filiale.nom.toLowerCase().replace(/\s+/g, '-'),
+        page_slug: filiale.slug || generateSlug(filiale.nom),
         contents: [
           { section_key: 'stat_1_value', content_value: filiale.stat_1_value, content_type: 'text' },
           { section_key: 'stat_1_label', content_value: filiale.stat_1_label, content_type: 'text' },
@@ -218,7 +257,7 @@ export default function StatsManager() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error('Erreur save filiale stats:', err);
-      alert('Erreur lors de la sauvegarde.');
+      toast.error('Erreur lors de la sauvegarde.');
     } finally {
       setSavingId(null);
     }

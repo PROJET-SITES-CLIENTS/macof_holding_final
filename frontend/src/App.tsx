@@ -6,7 +6,7 @@ import {
   Outlet,
   Navigate,
 } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import Lenis from "@studio-freight/lenis";
 import { AnimatePresence } from "framer-motion";
 import gsap from "gsap";
@@ -30,33 +30,82 @@ import Transit from "./pages/filiales/Transit";
 import Mining from "./pages/filiales/Mining";
 import Fishing from "./pages/filiales/Fishing";
 import Print from "./pages/filiales/Print";
-import Promo from "./pages/Promo";
-
-import Login from "./pages/admin/Login";
-import DashboardLayout from "./pages/admin/DashboardLayout";
-import Dashboard from "./pages/admin/Dashboard";
-import Leads from "./pages/admin/Leads";
-import GalerieManager from "./pages/admin/GalerieManager";
-import CataloguesManager from "./pages/admin/CataloguesManager";
-import FilialesManager from "./pages/admin/FilialesManager";
-import PagesEditor from "./pages/admin/PagesEditor";
-import Settings from "./pages/admin/Settings";
-import StatsManager from "./pages/admin/StatsManager";
-import PartenairesManager from "./pages/admin/PartenairesManager";
-import NotificationsManager from "./pages/admin/NotificationsManager";
-import TemoignagesManager from "./pages/admin/TemoignagesManager";
-import RealisationsManager from "./pages/admin/RealisationsManager";
 import ProductDetails from "./pages/filiales/ProductDetails";
 import Checkout from "./pages/filiales/Checkout";
 import { CartProvider } from "./components/restauration/CartContext";
 
+// ─── Pages chargées à la demande (allège le bundle du site public) ─────────
+const Promo = lazy(() => import("./pages/Promo"));
+const NotFound = lazy(() => import("./components/NotFound"));
+
+// Toute la partie administration est exclue du bundle public
+const Login = lazy(() => import("./pages/admin/Login"));
+const DashboardLayout = lazy(() => import("./pages/admin/DashboardLayout"));
+const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
+const Leads = lazy(() => import("./pages/admin/Leads"));
+const GalerieManager = lazy(() => import("./pages/admin/GalerieManager"));
+const CataloguesManager = lazy(() => import("./pages/admin/CataloguesManager"));
+const FilialesManager = lazy(() => import("./pages/admin/FilialesManager"));
+const PagesEditor = lazy(() => import("./pages/admin/PagesEditor"));
+const Settings = lazy(() => import("./pages/admin/Settings"));
+const StatsManager = lazy(() => import("./pages/admin/StatsManager"));
+const PartenairesManager = lazy(() => import("./pages/admin/PartenairesManager"));
+const NotificationsManager = lazy(() => import("./pages/admin/NotificationsManager"));
+const TemoignagesManager = lazy(() => import("./pages/admin/TemoignagesManager"));
+const RealisationsManager = lazy(() => import("./pages/admin/RealisationsManager"));
+const CommandesManager = lazy(() => import("./pages/admin/CommandesManager"));
+const AdminsManager = lazy(() => import("./pages/admin/AdminsManager"));
+const MenuProduitsPage = lazy(() => import("./pages/admin/RestaurationManager"));
+
 import { AnimatedPage } from "./components/layout/AnimatedPage";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { InstallPWAButton } from "./components/pwa/InstallPWAButton";
-import NotFound from "./components/NotFound";
-import CommandesManager from "./pages/admin/CommandesManager";
-import AdminsManager from "./pages/admin/AdminsManager";
-import MenuProduitsPage from "./pages/admin/RestaurationManager";
+import { ErrorBoundary } from "./components/ui/ErrorBoundary";
+
+// ─── Titres de pages (SEO) ──────────────────────────────────────────────────
+
+const PAGE_TITLES: Record<string, string> = {
+  "/": "MACOF Holding — L'Excellence Sans Compromis",
+  "/about": "À propos — MACOF Holding",
+  "/domaines": "Nos domaines d'activité — MACOF Holding",
+  "/galerie": "Galerie de réalisations — MACOF Holding",
+  "/catalogues": "Catalogues & documents — MACOF Holding",
+  "/partenaires": "Nos partenaires — MACOF Holding",
+  "/contact": "Contact & devis — MACOF Holding",
+  "/immobilier": "MACOF Immobilier — Promotion immobilière en Guinée",
+  "/restauration": "MACOF Restauration — Traiteur & menu SEBA",
+  "/transit": "MACOF Transit & Logistics — Transport et logistique",
+  "/mining": "MACOF Mining — Extraction minière en Guinée",
+  "/fishing": "MACOF Fishing — Pêche industrielle",
+  "/print": "MACOF Print — Impression & communication visuelle",
+  "/checkout": "Votre commande — MACOF Restauration",
+  "/admin/login": "Administration — MACOF Holding",
+};
+
+function TitleManager() {
+  const location = useLocation();
+  useEffect(() => {
+    if (PAGE_TITLES[location.pathname]) {
+      document.title = PAGE_TITLES[location.pathname];
+    } else if (location.pathname.startsWith("/admin")) {
+      document.title = "Tableau de bord — MACOF Holding";
+    } else if (location.pathname.startsWith("/promo")) {
+      document.title = "Annonce — MACOF Holding";
+    } else {
+      document.title = "MACOF Holding — L'Excellence Sans Compromis";
+    }
+  }, [location.pathname]);
+  return null;
+}
+
+// Écran d'attente pendant le chargement d'une page à la demande
+function PageLoader() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center bg-[#0b1220]">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#cda434]/30 border-t-[#cda434]" />
+    </div>
+  );
+}
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -101,8 +150,18 @@ function AnimatedRoutes() {
     <AnimatePresence
       mode="wait"
       onExitComplete={() => {
-        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-        ScrollTrigger.refresh();
+        // Ancre (#section) : on amène l'utilisateur à la cible au lieu du haut de page
+        if (location.hash) {
+          window.setTimeout(() => {
+            document
+              .querySelector(location.hash)
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            ScrollTrigger.refresh();
+          }, 60);
+        } else {
+          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+          ScrollTrigger.refresh();
+        }
       }}
     >
       <Routes location={location} key={location.pathname}>
@@ -287,7 +346,11 @@ function PublicLayout() {
     <div className="min-h-screen flex flex-col overflow-x-hidden">
       <Navbar />
       <main className="flex-grow">
-        <AnimatedRoutes /> {/* 👈 Intégration des routes animées ici */}
+        {/* Un crash de rendu d'une page publique affiche un message propre
+            au lieu d'un écran blanc */}
+        <ErrorBoundary>
+          <AnimatedRoutes /> {/* 👈 Intégration des routes animées ici */}
+        </ErrorBoundary>
       </main>
       <Footer />
       <InstallPWAButton /> {/* Installation de l'app mobile (PWA) */}
@@ -302,39 +365,42 @@ function App() {
 
   return (
     <BrowserRouter>
+      <TitleManager />
       <Toaster position="top-right" richColors closeButton />
       <CartProvider>
-        <Routes>
-          {/* Admin routes avec protection */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Login />} />
-            <Route path="login" element={<Login />} />
-            <Route element={<DashboardLayout />}>
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="demandes" element={<Leads />} />
-              <Route path="commandes" element={<CommandesManager />} />
-              <Route path="notifications" element={<NotificationsManager />} />
-              <Route path="galerie" element={<GalerieManager />} />
-              <Route path="catalogues" element={<CataloguesManager />} />
-              <Route path="filiales" element={<FilialesManager />} />
-              <Route path="pages" element={<PagesEditor />} />
-              <Route path="stats" element={<StatsManager />} />
-              <Route path="partenaires" element={<PartenairesManager />} />
-              <Route path="temoignages" element={<TemoignagesManager />} />
-              <Route path="realisations" element={<RealisationsManager />} />
-              {/* <Route path="restauration" element={<RestaurationManager />} /> */}
-              <Route path="menu">
-                <Route index element={<Navigate to="produits" replace />} />
-                <Route path="produits" element={<MenuProduitsPage />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Admin routes avec protection */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Login />} />
+              <Route path="login" element={<Login />} />
+              <Route element={<DashboardLayout />}>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="demandes" element={<Leads />} />
+                <Route path="commandes" element={<CommandesManager />} />
+                <Route path="notifications" element={<NotificationsManager />} />
+                <Route path="galerie" element={<GalerieManager />} />
+                <Route path="catalogues" element={<CataloguesManager />} />
+                <Route path="filiales" element={<FilialesManager />} />
+                <Route path="pages" element={<PagesEditor />} />
+                <Route path="stats" element={<StatsManager />} />
+                <Route path="partenaires" element={<PartenairesManager />} />
+                <Route path="temoignages" element={<TemoignagesManager />} />
+                <Route path="realisations" element={<RealisationsManager />} />
+                {/* <Route path="restauration" element={<RestaurationManager />} /> */}
+                <Route path="menu">
+                  <Route index element={<Navigate to="produits" replace />} />
+                  <Route path="produits" element={<MenuProduitsPage />} />
+                </Route>
+                <Route path="settings" element={<Settings />} />
+                <Route path="administrateurs" element={<AdminsManager />} />
               </Route>
-              <Route path="settings" element={<Settings />} />
-              <Route path="administrateurs" element={<AdminsManager />} />
             </Route>
-          </Route>
 
-          {/* Public routes avec layout partagé */}
-          <Route path="/*" element={<PublicLayout />} />
-        </Routes>
+            {/* Public routes avec layout partagé */}
+            <Route path="/*" element={<PublicLayout />} />
+          </Routes>
+        </Suspense>
       </CartProvider>
     </BrowserRouter>
   );

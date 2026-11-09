@@ -4,13 +4,13 @@ import { db } from "../db/client";
 import { settings } from "../db/schema";
 import { success, error } from "../utils/response";
 import { sendEmail } from "../services/email";
-import { authMiddleware } from "../middleware/auth";
+import { authMiddleware, requireRole } from "../middleware/auth";
 
 const settingsRoutes = new Hono();
 
-// Authentification requise pour les ecritures, le GET reste public (cles publiques uniquement)
-settingsRoutes.on("POST", "*", authMiddleware);
-settingsRoutes.on("PUT", "*", authMiddleware);
+// Ecritures réservées aux admins (SMTP, frais, acomptes…), le GET reste public (cles publiques uniquement)
+settingsRoutes.on("POST", "*", authMiddleware, requireRole("admin"));
+settingsRoutes.on("PUT", "*", authMiddleware, requireRole("admin"));
 
 export const PUBLIC_KEYS = [
   "contact_email",

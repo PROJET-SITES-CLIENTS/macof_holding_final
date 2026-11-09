@@ -116,7 +116,8 @@ export default function Dashboard() {
 
   const kpi = {
     total: stats?.total_demandes ?? demandes.length,
-    traite: demandes.filter((d: Demande) => d.statut === 'traite').length,
+    // Comptage SQL exhaustif (le front n'affiche que les 100 dernières demandes)
+    traite: stats?.total_traitees ?? demandes.filter((d: Demande) => d.statut === 'traite').length,
     nouveau: stats?.nouvelles_demandes ?? demandes.filter((d: Demande) => d.statut === 'nouveau').length,
     filialesActives: filiales.filter((f: Filiale) => f.statut === 'actif').length,
   };

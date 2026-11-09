@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Plus, Check, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -266,6 +266,7 @@ export default function PublicMenu() {
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className="p-2 rounded-full border border-white/10 text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="Page précédente"
             >
               <ChevronLeft size={20} />
             </button>
@@ -290,6 +291,7 @@ export default function PublicMenu() {
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="p-2 rounded-full border border-white/10 text-white/60 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="Page suivante"
             >
               <ChevronRight size={20} />
             </button>

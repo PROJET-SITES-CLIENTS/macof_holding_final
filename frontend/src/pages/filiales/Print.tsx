@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState , useMemo } from 'react';
-import { AnimatedPage } from '../../components/layout/AnimatedPage';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import gsap from 'gsap';
@@ -39,7 +38,16 @@ export default function Print() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState('Tous');
   const [formStatus, setFormStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [formData, setFormData] = useState({ nom_complet: '', email: '', telephone: '', objet: '', message: '' });
+  const [formData, setFormData] = useState({
+    nom_complet: '', // Nom / Société
+    email: '', // Email (requis par l'API)
+    telephone: '', // Téléphone
+    type_support: 'Impression Papier (Offset/Numérique)', // Type de support
+    finition: 'Standard', // Finition spécifique
+    quantite: '', // Quantité / Format
+    delai: '', // Délai souhaité
+    message: '', // Spécifications & brief
+  });
   const [reference, setReference] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
 
@@ -57,7 +65,7 @@ export default function Print() {
     
   });
 
-  const { data: content, isLoading: loading } = useQuery({
+  const { data: content } = useQuery({
     queryKey: ['pageContent', SLUG],
     queryFn: async () => {
       try {
@@ -85,13 +93,22 @@ export default function Print() {
     e.preventDefault();
     setFormStatus('loading');
     try {
-      const response = await api.post('/demandes', { ...formData, filiale: 'MACOF Print & Com', type_demande: 'devis' });
+      const objet = [formData.type_support, formData.finition, formData.quantite, formData.delai].filter(Boolean).join(' | ');
+      const response = await api.post('/demandes', {
+        nom_complet: formData.nom_complet,
+        email: formData.email,
+        telephone: formData.telephone,
+        objet,
+        message: formData.message,
+        filiale: 'MACOF Print & Com',
+        type_demande: 'devis',
+      });
       if (response.data.success) {
         setReference(response.data.data?.reference || '');
         setWhatsappUrl(response.data.data?.whatsapp_url || '');
       }
       setFormStatus('success');
-      setFormData({ nom_complet: '', email: '', telephone: '', objet: '', message: '' });
+      setFormData({ nom_complet: '', email: '', telephone: '', type_support: 'Impression Papier (Offset/Numérique)', finition: 'Standard', quantite: '', delai: '', message: '' });
     } catch (err) {
       console.error('Erreur formulaire:', err);
       setFormStatus('error');
@@ -120,8 +137,7 @@ export default function Print() {
   }, []);
 
   return (
-    <AnimatedPage className="bg-white">
-      <div ref={containerRef}>
+    <div ref={containerRef} className="bg-white">
         
         {/* Hero Créatif */}
         <section className="hero-section relative h-screen flex items-center justify-center overflow-hidden bg-black">
@@ -340,18 +356,22 @@ export default function Print() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Nom / Société</label>
-                        <Input required placeholder="Votre nom" className="border-gray-200 bg-gray-50 focus:bg-white" />
+                        <Input required placeholder="Votre nom" value={formData.nom_complet} onChange={(e) => setFormData({ ...formData, nom_complet: e.target.value })} className="border-gray-200 bg-gray-50 focus:bg-white" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Téléphone</label>
-                        <Input required placeholder="+224 ..." className="border-gray-200 bg-gray-50 focus:bg-white" />
+                        <Input required placeholder="+224 ..." value={formData.telephone} onChange={(e) => setFormData({ ...formData, telephone: e.target.value })} className="border-gray-200 bg-gray-50 focus:bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Email</label>
+                        <Input required type="email" placeholder="contact@..." value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="border-gray-200 bg-gray-50 focus:bg-white" />
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Type de Support</label>
-                        <select className="flex h-10 w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-900">
+                        <select value={formData.type_support} onChange={(e) => setFormData({ ...formData, type_support: e.target.value })} className="flex h-10 w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-900">
                           <option>Impression Papier (Offset/Numérique)</option>
                           <option>Grand Format (Bâche, Vinyle)</option>
                           <option>Signalétique Rigide (Alucobond, PVC)</option>
@@ -361,7 +381,7 @@ export default function Print() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Finition Spécifique</label>
-                        <select className="flex h-10 w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-900">
+                        <select value={formData.finition} onChange={(e) => setFormData({ ...formData, finition: e.target.value })} className="flex h-10 w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-900">
                           <option>Standard</option>
                           <option>Vernis sélectif 3D / Dorure</option>
                           <option>Pelliculage Mat / Brillant</option>
@@ -373,11 +393,11 @@ export default function Print() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Quantité / Format</label>
-                        <Input placeholder="Ex: 5000 ex, format A4" className="border-gray-200 bg-gray-50 focus:bg-white" />
+                        <Input placeholder="Ex: 5000 ex, format A4" value={formData.quantite} onChange={(e) => setFormData({ ...formData, quantite: e.target.value })} className="border-gray-200 bg-gray-50 focus:bg-white" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Délai souhaité</label>
-                        <Input type="date" className="border-gray-200 bg-gray-50 focus:bg-white" />
+                        <Input type="date" value={formData.delai} onChange={(e) => setFormData({ ...formData, delai: e.target.value })} className="border-gray-200 bg-gray-50 focus:bg-white" />
                       </div>
                     </div>
 
@@ -386,6 +406,8 @@ export default function Print() {
                       <textarea
                         required
                         rows={3}
+                        value={formData.message}
+                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         className="flex w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-900"
                         placeholder="Précisez le grammage, le lieu de l'événement, ou l'utilisation finale..."
                       />
@@ -401,8 +423,7 @@ export default function Print() {
           </div>
         </section>
 
-      </div>
-    </AnimatedPage>
+    </div>
   );
 }
 

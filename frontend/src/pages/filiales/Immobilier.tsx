@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState , useMemo } from 'react';
-import { AnimatedPage } from '../../components/layout/AnimatedPage';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { mergeContent, getImageUrl, DEFAULT_FALLBACK_IMAGE, parseServices } from '../../lib/utils';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useQuery } from '@tanstack/react-query';
 import { MessageCircle, HardHat, Building2, Landmark, Hammer, Ruler } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -40,11 +38,17 @@ const fallbackServices = [
 export default function Immobilier() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [formStatus, setFormStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [formData, setFormData] = useState({ nom_complet: '', email: '', telephone: '', objet: '', message: '' });
+  const [formData, setFormData] = useState({
+    nom_complet: '', // Nom complet / Société
+    email: '', // Email (requis par l'API)
+    telephone: '', // Téléphone
+    nature_projet: 'Gros œuvre & Bâtiment', // Nature du projet
+    budget: '< 1 Milliard GNF', // Budget estimé
+    message: '', // Cahier des charges
+  });
   const [reference, setReference] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const [content, setContent] = useState(fallbackContent);
-  const [loading, setLoading] = useState(true);
   const [filialeData, setFilialeData] = useState<any>(null);
 
     useEffect(() => {
@@ -60,7 +64,7 @@ export default function Immobilier() {
       if (filialesRes?.data?.success) {
         setFilialeData(filialesRes.data.data);
       }
-    }).finally(() => setLoading(false));
+    });
   }, []);
 
   useEffect(() => {
@@ -86,13 +90,22 @@ export default function Immobilier() {
     e.preventDefault();
     setFormStatus('loading');
     try {
-      const response = await api.post('/demandes', { ...formData, filiale: 'MACOF Immobilier', type_demande: 'devis' });
+      const objet = [formData.nature_projet, formData.budget].filter(Boolean).join(' | ');
+      const response = await api.post('/demandes', {
+        nom_complet: formData.nom_complet,
+        email: formData.email,
+        telephone: formData.telephone,
+        objet,
+        message: formData.message,
+        filiale: 'MACOF Immobilier',
+        type_demande: 'devis',
+      });
       if (response.data.success) {
         setReference(response.data.data?.reference || '');
         setWhatsappUrl(response.data.data?.whatsapp_url || '');
       }
       setFormStatus('success');
-      setFormData({ nom_complet: '', email: '', telephone: '', objet: '', message: '' });
+      setFormData({ nom_complet: '', email: '', telephone: '', nature_projet: 'Gros œuvre & Bâtiment', budget: '< 1 Milliard GNF', message: '' });
     } catch (err) {
       console.error('Erreur formulaire:', err);
       setFormStatus('error');
@@ -116,8 +129,7 @@ export default function Immobilier() {
   }, []);
 
   return (
-    <AnimatedPage className="bg-white">
-      <div ref={containerRef}>
+    <div ref={containerRef} className="bg-white">
         {/* Header B2B Strict */}
         <section className="header-section relative h-screen flex items-center justify-center overflow-hidden bg-black">
           <div className="absolute inset-0 z-0">
@@ -320,17 +332,21 @@ export default function Immobilier() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Nom Complet / Société</label>
-                        <Input required placeholder="Votre entité" className="border-gray-200 bg-gray-50 focus:bg-white" />
+                        <Input required placeholder="Votre entité" value={formData.nom_complet} onChange={(e) => setFormData({ ...formData, nom_complet: e.target.value })} className="border-gray-200 bg-gray-50 focus:bg-white" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Téléphone</label>
-                        <Input required placeholder="+224 ..." className="border-gray-200 bg-gray-50 focus:bg-white" />
+                        <Input required placeholder="+224 ..." value={formData.telephone} onChange={(e) => setFormData({ ...formData, telephone: e.target.value })} className="border-gray-200 bg-gray-50 focus:bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Email</label>
+                        <Input required type="email" placeholder="contact@..." value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="border-gray-200 bg-gray-50 focus:bg-white" />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Nature du projet</label>
-                        <select className="flex h-10 w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600">
+                        <select value={formData.nature_projet} onChange={(e) => setFormData({ ...formData, nature_projet: e.target.value })} className="flex h-10 w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600">
                           <option>Gros œuvre & Bâtiment</option>
                           <option>Génie Civil & VRD</option>
                           <option>Promotion Immobilière</option>
@@ -339,7 +355,7 @@ export default function Immobilier() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Budget Estimé</label>
-                        <select className="flex h-10 w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600">
+                        <select value={formData.budget} onChange={(e) => setFormData({ ...formData, budget: e.target.value })} className="flex h-10 w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600">
                           <option>&lt; 1 Milliard GNF</option>
                           <option>1 - 5 Milliards GNF</option>
                           <option>5 - 10 Milliards GNF</option>
@@ -349,7 +365,7 @@ export default function Immobilier() {
                     </div>
                     <div className="space-y-2 mb-8">
                       <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Cahier des charges synthétique</label>
-                      <textarea required rows={5} className="flex w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600" placeholder="Décrivez les grandes lignes de votre projet..." />
+                      <textarea required rows={5} value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} className="flex w-full rounded-sm border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-red-600" placeholder="Décrivez les grandes lignes de votre projet..." />
                     </div>
                     <Button variant="luxury" size="lg" className="w-full bg-gray-900 text-white hover:bg-red-600 transition-colors uppercase tracking-widest text-sm" disabled={formStatus === 'loading'}>
                       {formStatus === 'loading' ? 'Transmission...' : 'Soumettre le dossier'}
@@ -361,8 +377,7 @@ export default function Immobilier() {
           </div>
         </section>
 
-      </div>
-    </AnimatedPage>
+    </div>
   );
 }
 

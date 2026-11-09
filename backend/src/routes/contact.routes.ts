@@ -4,6 +4,7 @@ import { db } from "../db/client";
 import { demandes_contact, filiales } from "../db/schema";
 import { success, error } from "../utils/response";
 import { demandeSchema } from "../utils/validation";
+import { rateLimit } from "../middleware/rateLimit";
 import { sendNotificationEmail } from "../services/email";
 import { generateContactWhatsAppUrl } from "../services/whatsapp";
 
@@ -40,7 +41,7 @@ function generateReference(): string {
 }
 
 // POST /api/contact - Soumission du formulaire de contact public
-contactRoutes.post("/", async (c) => {
+contactRoutes.post("/", rateLimit({ key: "demande", limit: 5, windowMs: 10 * 60 * 1000 }), async (c) => {
   const body = await parseBody(c);
   if (!body) {
     return error(c, "Données de formulaire invalides ou illisibles", 400);

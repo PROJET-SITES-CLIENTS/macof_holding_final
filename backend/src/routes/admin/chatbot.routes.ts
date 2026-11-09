@@ -20,6 +20,6 @@ adminChatbotRoutes.post("/voice", async (c) => {
     return success(c, result, "Commande vocale traitée avec succès");
   } catch (err: any) {
     console.error("Erreur commande vocale :", err);
-    return error(c, err.message || "Erreur interne", 500);
+    return error(c, "Erreur lors du traitement de la commande vocale", 500);
   }
 });

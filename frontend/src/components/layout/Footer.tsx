@@ -301,20 +301,6 @@ export function Footer() {
             © {new Date().getFullYear()} MACOF Holding — L'art de façonner
             l'avenir. Tous droits réservés.
           </p>
-          <div className="flex gap-6">
-            <Link
-              to="/contact"
-              className="text-white/40 text-xs font-light hover:text-white/70 transition-colors"
-            >
-              Mentions légales
-            </Link>
-            <Link
-              to="/contact"
-              className="text-white/40 text-xs font-light hover:text-white/70 transition-colors"
-            >
-              Politique de confidentialité
-            </Link>
-          </div>
         </div>
       </div>
     </footer>

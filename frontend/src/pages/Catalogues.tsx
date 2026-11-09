@@ -1,16 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
-import { AnimatedPage } from '../components/layout/AnimatedPage';
-import { Download, X, MessageCircle } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Download, X, MessageCircle, RefreshCw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import gsap from 'gsap';
 import { api } from '@/lib/api';
-
-const fallbackCatalogues = [
-  { id: 1, titre: 'Catalogue Général MACOF Holding', description: 'Découvrez l\'ensemble de nos services', filiale: 'MACOF Holding', file_path: '#' },
-  { id: 2, titre: 'Catalogue Immobilier', description: 'Nos projets immobiliers', filiale: 'MACOF Immobilier', file_path: '#' },
-  { id: 3, titre: 'Catalogue Restauration', description: 'Nos offres de restauration', filiale: 'SEBA International', file_path: '#' },
-];
 
 const plaquettePublicUrl = '/plaquette-macof-holding.pdf';
 
@@ -18,26 +11,34 @@ export default function Catalogues() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
   const [downloadStatus, setDownloadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState(false);
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const [leadForm, setLeadForm] = useState({ nom: '', email: '', telephone: '' });
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const loadCatalogues = useCallback(() => {
+    setLoadError(false);
     api.get('/catalogues')
       .then(res => {
         if (res.data.success) {
           const data = res.data.data;
           setDocuments(Array.isArray(data) ? data : (data.items || []));
+        } else {
+          setDocuments([]);
+          setLoadError(true);
         }
       })
       .catch(err => {
         console.error("Erreur de chargement des catalogues", err);
-        setDocuments(fallbackCatalogues);
-        setError('Erreur de chargement des catalogues');
+        setDocuments([]);
+        setLoadError(true);
       });
   }, []);
+
+  useEffect(() => {
+    loadCatalogues();
+  }, [loadCatalogues]);
 
   useEffect(() => {
     if (documents.length > 0) {
@@ -84,7 +85,7 @@ export default function Catalogues() {
   };
 
   return (
-    <AnimatedPage className="bg-background pt-32 pb-24 min-h-screen">
+    <div className="bg-background pt-32 pb-24 min-h-screen">
       <div ref={containerRef} className="max-w-5xl mx-auto px-6 lg:px-12">
         <div className="mb-20 text-center md:text-left">
           <h1 className="text-5xl md:text-7xl font-serif text-white font-light mb-6">
@@ -95,7 +96,19 @@ export default function Catalogues() {
           </p>
         </div>
 
-        {error && <p className="text-red-500 text-center mb-8">Erreur de chargement des catalogues</p>}
+        {loadError && (
+          <div className="mb-8 rounded-2xl border border-red-500/30 bg-red-500/5 px-6 py-10 text-center">
+            <p className="text-red-400 mb-5">Impossible de charger les catalogues.</p>
+            <button
+              type="button"
+              onClick={loadCatalogues}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-xs uppercase tracking-[0.2em] text-white transition hover:bg-white hover:text-black"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Réessayer
+            </button>
+          </div>
+        )}
 
         <div className="mb-8 rounded-2xl border border-primary/30 bg-primary/5 p-6 backdrop-blur-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -152,6 +165,7 @@ export default function Catalogues() {
             <button
               className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
               onClick={() => setSelectedDoc(null)}
+              aria-label="Fermer"
             >
               <X size={24} />
             </button>
@@ -211,6 +225,6 @@ export default function Catalogues() {
         </div>
       )}
 
-    </AnimatedPage>
+    </div>
   );
 }

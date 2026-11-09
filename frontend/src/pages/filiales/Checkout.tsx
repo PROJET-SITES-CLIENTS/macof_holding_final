@@ -237,6 +237,7 @@ export default function Checkout() {
                           type="button"
                           onClick={() => remove(item.product.id)}
                           className="p-1 rounded border border-white/10 hover:bg-white/10 transition"
+                          aria-label="Diminuer la quantité"
                         >
                           <Minus size={12} />
                         </button>
@@ -245,6 +246,7 @@ export default function Checkout() {
                           type="button"
                           onClick={() => add(item.product)}
                           className="p-1 rounded border border-white/10 hover:bg-white/10 transition"
+                          aria-label="Augmenter la quantité"
                         >
                           <Plus size={12} />
                         </button>
@@ -254,6 +256,7 @@ export default function Checkout() {
                             for (let i = 0; i < item.quantity; i++) remove(item.product.id);
                           }}
                           className="ml-auto text-white/30 hover:text-red-400 transition p-1"
+                          aria-label="Retirer l'article"
                         >
                           <Trash2 size={14} />
                         </button>

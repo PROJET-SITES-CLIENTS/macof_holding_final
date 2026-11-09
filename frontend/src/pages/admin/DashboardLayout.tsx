@@ -32,6 +32,7 @@ interface AdminUser {
   name?: string;
   email?: string;
   nom?: string;
+  role?: string;
   avatar_url?: string | null;
 }
 
@@ -49,6 +50,7 @@ const navItems: NavItem[] = [
   { label: 'Produits SEBA', icon: UtensilsCrossed, path: '/admin/menu/produits' },
   { label: 'Filiales', icon: Building2, path: '/admin/filiales' },
   { label: 'Galerie', icon: Image, path: '/admin/galerie' },
+  { label: 'Réalisations', icon: Camera, path: '/admin/realisations' },
   { label: 'Catalogues', icon: FileText, path: '/admin/catalogues' },
   { label: 'Chiffres & Stats', icon: BarChart3, path: '/admin/stats' },
   { label: 'Partenaires', icon: Users, path: '/admin/partenaires' },
@@ -151,6 +153,7 @@ export default function DashboardLayout() {
   };
 
   const adminName = adminUser.name || adminUser.nom || adminUser.email || 'Admin';
+  const adminRoleLabel = adminUser.role === 'gestionnaire' ? 'Gestionnaire' : 'Administrateur';
   const currentPageTitle = pageTitles[location.pathname] || 'Tableau de bord';
 
   const openProfileModal = () => {
@@ -265,7 +268,7 @@ export default function DashboardLayout() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-slate-200">{adminName}</p>
-              <p className="text-[11px] uppercase tracking-wider text-slate-500">Administrateur</p>
+              <p className="text-[11px] uppercase tracking-wider text-slate-500">{adminRoleLabel}</p>
             </div>
           </div>
           <button

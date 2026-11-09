@@ -18,6 +18,7 @@ import {
 import { api } from '../../lib/api';
 import { AdminPage } from '../../components/ui/AdminPage';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -128,12 +129,12 @@ export default function FilialesManager() {
 
       if (err?.response?.status === 404) {
         const message = 'Cette filiale n\'existe plus ou l\'ID est invalide. Rechargez la liste avant de refaire une modification.';
-        alert(message);
+        toast.error(message);
         queryClient.invalidateQueries({ queryKey: ['filiales'] });
         return;
       }
 
-      alert(err?.response?.data?.message || 'Erreur lors de la sauvegarde de la filiale.');
+      toast.error(err?.response?.data?.message || 'Erreur lors de la sauvegarde de la filiale.');
     },
   });
 
@@ -144,7 +145,7 @@ export default function FilialesManager() {
     },
     onError: (err: any) => {
       console.error('Erreur suppression:', err);
-      alert(err?.response?.data?.message || 'Erreur lors de la suppression.');
+      toast.error(err?.response?.data?.message || 'Erreur lors de la suppression.');
     },
   });
 
@@ -216,7 +217,7 @@ export default function FilialesManager() {
 
     if (editId && !filiales.some((f) => f.id === editId)) {
       const message = 'Cette filiale n\'existe plus ou l\'ID est invalide. Rechargez la liste avant de sauvegarder.';
-      alert(message);
+      toast.error(message);
       queryClient.invalidateQueries({ queryKey: ['filiales'] });
       closeModal();
       return;
